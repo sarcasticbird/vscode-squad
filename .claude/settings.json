@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild -scheme CodeSquad -configuration Debug -destination 'platform=macOS' build)",
+      "Bash(/usr/bin/log show *)",
+      "Read(//Applications/CodeSquad.app/Contents/Resources/**)"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+run/
+cache/
+lib/
+log/
+!env/
+.DS_Store
+*.log
+*.tmp
+*.code-workspace

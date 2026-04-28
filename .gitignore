@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# Swift / SPM
+CodeSquad/.build/
+CodeSquad/.swiftpm/
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+xcuserdata/
+DerivedData/
+
+# Claude Code
+.claude/settings.local.json
+
+# Flox runtime artifacts
+.flox/cache/
+.flox/log/
+.flox/run/
+
+# Generated build artifacts (regenerate via scripts/)
+CodeSquad/scripts/icon_source.png
