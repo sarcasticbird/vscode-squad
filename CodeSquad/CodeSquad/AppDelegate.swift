@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windowDiscovery?.start()
 
         hookServer = HookServer(state: state)
+        hookServer?.windowDiscovery = windowDiscovery
         hookServer?.start()
 
         claudeScanner = ClaudeProcessScanner(state: state)

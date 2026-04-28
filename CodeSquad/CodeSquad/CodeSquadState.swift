@@ -14,7 +14,6 @@ final class CodeSquadState: ObservableObject {
     static let shared = CodeSquadState()
 
     @Published var workspaces: [Workspace] = []
-    @Published var terminalSessions: [Workspace] = []
     @Published var claudeStatus: [String: ClaudeStatus] = [:]
     @Published var claudeSessions: [String: [ClaudeSession]] = [:]
     @Published var panelMinimized: Bool = false
@@ -64,25 +63,6 @@ final class CodeSquadState: ObservableObject {
     func clearStatusAndCollapse(for workspace: String) {
         if claudeStatus[workspace] == .needsAttention {
             claudeStatus[workspace] = .idle
-        }
-    }
-
-    func addTerminalSession(name: String, cwd: String, sessions: [ClaudeSession]) {
-        guard !terminalSessions.contains(where: { $0.matchesCWD(cwd) }) else { return }
-        let ws = Workspace(name: name, title: cwd, pid: 0, windowElement: nil)
-        terminalSessions.append(ws)
-        claudeStatus[name] = .idle
-        claudeSessions[name] = sessions
-    }
-
-    func pruneTerminalSessions(activeCWDs: Set<String>) {
-        terminalSessions.removeAll { session in
-            let stillActive = activeCWDs.contains { session.matchesCWD($0) }
-            if !stillActive {
-                claudeStatus.removeValue(forKey: session.name)
-                claudeSessions.removeValue(forKey: session.name)
-            }
-            return !stillActive
         }
     }
 

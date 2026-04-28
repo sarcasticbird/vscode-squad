@@ -27,6 +27,7 @@ final class HookServer {
     private var listener: NWListener?
     private let state: CodeSquadState
     private let logger = Logger(subsystem: "com.cdolan.codesquad", category: "HookServer")
+    weak var windowDiscovery: WindowDiscovery?
 
     init(port: UInt16 = 9876, state: CodeSquadState) {
         self.port = port
@@ -149,11 +150,17 @@ final class HookServer {
     }
 
     @MainActor
-    private func routePayload(_ payload: HookPayload, path: String) {
+    private func routePayload(_ payload: HookPayload, path: String, isRetry: Bool = false) {
         let workspace = state.workspaces.first(where: { $0.matchesCWD(payload.cwd) })
-            ?? state.terminalSessions.first(where: { $0.matchesCWD(payload.cwd) })
+
         guard let workspace else {
-            logger.warning("No workspace match for cwd: \(payload.cwd)")
+            if !isRetry, let discovery = windowDiscovery {
+                logger.info("No workspace match for cwd: \(payload.cwd) — refreshing windows")
+                discovery.refresh()
+                routePayload(payload, path: path, isRetry: true)
+            } else {
+                logger.warning("No workspace match for cwd: \(payload.cwd) (after retry)")
+            }
             return
         }
 

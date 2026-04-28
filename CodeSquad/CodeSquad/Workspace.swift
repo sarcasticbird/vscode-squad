@@ -6,6 +6,7 @@ struct Workspace: Identifiable {
     let title: String
     let pid: pid_t
     let windowElement: AXUIElement?
+    var folderPaths: [String] = []
 
     init(name: String, title: String, pid: pid_t, windowElement: AXUIElement?) {
         self.id = "\(pid)-\(name)"
@@ -105,6 +106,13 @@ struct Workspace: Identifiable {
         let lowCWD = normalizedCWD.lowercased()
         if lowCWD.contains(lowName) {
             return true
+        }
+
+        for folder in folderPaths {
+            let normalizedFolder = folder.hasSuffix("/") ? String(folder.dropLast()) : folder
+            if normalizedCWD == normalizedFolder || normalizedCWD.hasPrefix(normalizedFolder + "/") {
+                return true
+            }
         }
 
         return false

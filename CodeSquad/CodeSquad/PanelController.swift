@@ -105,11 +105,11 @@ final class PanelController {
     }
 
     private func rosterContentHeight() -> CGFloat {
-        guard !state.workspaces.isEmpty || !state.terminalSessions.isEmpty else { return 120 }
+        guard !state.workspaces.isEmpty else { return 120 }
 
         let headerHeight: CGFloat = 40
         let cardPadding: CGFloat = 4
-        let baseCardHeight: CGFloat = 44 // name row + title row + vertical padding
+        let baseCardHeight: CGFloat = 44
         let sessionRowHeight: CGFloat = 18
 
         var height = headerHeight
@@ -119,15 +119,7 @@ final class PanelController {
             height += baseCardHeight + sessionCount * sessionRowHeight + cardPadding
         }
 
-        if !state.terminalSessions.isEmpty {
-            height += 28 // "Terminal" section header
-            for ts in state.terminalSessions {
-                let sessionCount = CGFloat(state.claudeSessions[ts.name]?.count ?? 0)
-                height += baseCardHeight + sessionCount * sessionRowHeight + cardPadding
-            }
-        }
-
-        return height + 8 // bottom padding
+        return height + 8
     }
 
     private func targetScreen() -> NSScreen {

@@ -17,6 +17,7 @@ private struct SessionMeta {
     let entrypoint: String?
     let chatTitle: String?
     let status: String?
+    let cwd: String?
 }
 
 @MainActor
@@ -51,13 +52,10 @@ final class ClaudeProcessScanner {
 
     private func updateState(with sessions: [ClaudeSession]) {
         var matched: [String: [ClaudeSession]] = [:]
-        var unmatched: [ClaudeSession] = []
 
         for session in sessions {
             if let workspace = state.workspaces.first(where: { $0.matchesCWD(session.cwd) }) {
                 matched[workspace.name, default: []].append(session)
-            } else {
-                unmatched.append(session)
             }
         }
 
@@ -69,27 +67,8 @@ final class ClaudeProcessScanner {
                 state.claudeProcessGone(workspace: workspace.name)
             }
         }
-
-        var unmatchedGroups: [String: [ClaudeSession]] = [:]
-        for session in unmatched {
-            let name = URL(fileURLWithPath: session.cwd).lastPathComponent
-            unmatchedGroups[name, default: []].append(session)
-        }
-
-        var activeCWDs: Set<String> = []
-        for (name, sessions) in unmatchedGroups {
-            let cwd = sessions[0].cwd
-            activeCWDs.insert(cwd)
-            if !state.terminalSessions.contains(where: { $0.name == name }) {
-                state.addTerminalSession(name: name, cwd: cwd, sessions: sessions)
-            } else {
-                state.claudeProcessFound(workspace: name, sessions: sessions)
-            }
-            applyMetaStatus(workspace: name, sessions: sessions)
-        }
-
-        state.pruneTerminalSessions(activeCWDs: activeCWDs)
     }
+
 
     private func applyMetaStatus(workspace: String, sessions: [ClaudeSession]) {
         let current = state.claudeStatus[workspace]
@@ -109,9 +88,13 @@ final class ClaudeProcessScanner {
             let name = (execPath as NSString).lastPathComponent
             guard name == "claude" else { continue }
 
-            guard let cwd = processCWD(for: pid), !cwd.isEmpty, cwd != "/" else { continue }
+            let osCWD = processCWD(for: pid)
+            let usableOsCWD = (osCWD != nil && !osCWD!.isEmpty && osCWD != "/") ? osCWD : nil
 
-            let meta = readSessionMeta(for: pid, cwd: cwd)
+            let meta = readSessionMeta(for: pid, cwd: usableOsCWD)
+            let cwd = usableOsCWD ?? meta?.cwd
+            guard let cwd, !cwd.isEmpty, cwd != "/" else { continue }
+
             let source = meta?.entrypoint == "claude-vscode" ? "VS Code"
                 : execPath.contains("native-binary") ? "VS Code"
                 : "Terminal"
@@ -126,7 +109,7 @@ final class ClaudeProcessScanner {
         return results
     }
 
-    private nonisolated static func readSessionMeta(for pid: pid_t, cwd: String) -> SessionMeta? {
+    private nonisolated static func readSessionMeta(for pid: pid_t, cwd: String?) -> SessionMeta? {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let metaPath = "\(home)/.claude/sessions/\(pid).json"
 
@@ -138,13 +121,15 @@ final class ClaudeProcessScanner {
         let sessionId = json["sessionId"] as? String
         let entrypoint = json["entrypoint"] as? String
         let status = json["status"] as? String
+        let metaCWD = json["cwd"] as? String
 
+        let effectiveCWD = cwd ?? metaCWD
         var chatTitle: String?
-        if let sessionId {
-            chatTitle = readChatTitle(sessionId: sessionId, cwd: cwd)
+        if let sessionId, let effectiveCWD {
+            chatTitle = readChatTitle(sessionId: sessionId, cwd: effectiveCWD)
         }
 
-        return SessionMeta(sessionId: sessionId, entrypoint: entrypoint, chatTitle: chatTitle, status: status)
+        return SessionMeta(sessionId: sessionId, entrypoint: entrypoint, chatTitle: chatTitle, status: status, cwd: metaCWD)
     }
 
     private nonisolated static func readChatTitle(sessionId: String, cwd: String) -> String? {
@@ -205,6 +190,15 @@ final class ClaudeProcessScanner {
         guard result > 0 else { return nil }
         let len = buffer.firstIndex(of: 0) ?? buffer.count
         return String(decoding: buffer.prefix(len).map { UInt8(bitPattern: $0) }, as: UTF8.self)
+    }
+
+    private nonisolated static func parentPID(of pid: pid_t) -> pid_t? {
+        var info = proc_bsdshortinfo()
+        let size = Int32(MemoryLayout<proc_bsdshortinfo>.size)
+        let result = proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, &info, size)
+        guard result > 0 else { return nil }
+        let ppid = pid_t(info.pbsi_ppid)
+        return ppid > 0 ? ppid : nil
     }
 
     private nonisolated static func processCWD(for pid: pid_t) -> String? {

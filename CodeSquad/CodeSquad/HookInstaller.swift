@@ -10,6 +10,7 @@ enum HookInstaller {
         ("Notification", "/hook/attention", "permission_prompt|idle_prompt"),
         ("PermissionRequest", "/hook/attention", nil),
         ("PreToolUse", "/hook/working", nil),
+        ("UserPromptSubmit", "/hook/working", nil),
         ("Stop", "/hook/stopped", nil),
         ("SessionStart", "/hook/session-start", nil),
         ("SessionEnd", "/hook/session-end", nil),

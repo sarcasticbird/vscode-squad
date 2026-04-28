@@ -68,6 +68,7 @@ final class WindowDiscovery {
         }
 
         newWorkspaces.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        resolveWorkspaceFolders(&newWorkspaces)
         state.workspaces = newWorkspaces
         if !newWorkspaces.isEmpty {
             state.axTrusted = true
@@ -135,6 +136,63 @@ final class WindowDiscovery {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes)
         }
         observers.removeAll()
+    }
+
+    private nonisolated func resolveWorkspaceFolders(_ workspaces: inout [Workspace]) {
+        let folderMap = loadWorkspaceFolderMap()
+        for i in workspaces.indices {
+            let name = workspaces[i].name
+            if let folders = folderMap[name] {
+                workspaces[i].folderPaths = folders
+            }
+        }
+    }
+
+    private nonisolated func loadWorkspaceFolderMap() -> [String: [String]] {
+        var result: [String: [String]] = [:]
+        let fm = FileManager.default
+
+        let supportDirs = [
+            fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Code/User/workspaceStorage"),
+            fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Code - Insiders/User/workspaceStorage"),
+            fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Cursor/User/workspaceStorage"),
+        ]
+
+        for storageDir in supportDirs {
+            guard let entries = try? fm.contentsOfDirectory(atPath: storageDir.path) else { continue }
+            for entry in entries {
+                let wsJsonPath = storageDir.appendingPathComponent(entry).appendingPathComponent("workspace.json").path
+                guard let data = fm.contents(atPath: wsJsonPath),
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let wsURI = json["workspace"] as? String,
+                      wsURI.contains(".code-workspace") else { continue }
+
+                guard let wsFileURL = URL(string: wsURI),
+                      wsFileURL.isFileURL else { continue }
+
+                let wsFilePath = wsFileURL.path
+                let wsName = (wsFilePath as NSString).lastPathComponent
+                    .replacingOccurrences(of: ".code-workspace", with: "")
+
+                guard let wsData = fm.contents(atPath: wsFilePath),
+                      let wsJson = try? JSONSerialization.jsonObject(with: wsData) as? [String: Any],
+                      let folders = wsJson["folders"] as? [[String: Any]] else { continue }
+
+                let wsDir = URL(fileURLWithPath: wsFilePath).deletingLastPathComponent()
+                var resolved: [String] = []
+                for folder in folders {
+                    guard let relativePath = folder["path"] as? String else { continue }
+                    let absURL = wsDir.appendingPathComponent(relativePath).standardized
+                    resolved.append(absURL.path)
+                }
+
+                if !resolved.isEmpty {
+                    result[wsName] = resolved
+                }
+            }
+        }
+
+        return result
     }
 
     private func startSafetyNetTimer() {

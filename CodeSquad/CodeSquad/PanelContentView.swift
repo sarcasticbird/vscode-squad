@@ -117,25 +117,7 @@ struct PanelContentView: View {
                             )
                         }
 
-                        if !state.terminalSessions.isEmpty {
-                            Text("Terminal")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.35))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.leading, 4)
-                                .padding(.top, 6)
-
-                            ForEach(state.terminalSessions) { session in
-                                WorkspaceCard(
-                                    workspace: session,
-                                    claudeStatus: state.claudeStatus[session.name] ?? .inactive,
-                                    sessions: state.claudeSessions[session.name] ?? [],
-                                    onTap: {}
-                                )
-                            }
-                        }
-
-                        if state.workspaces.isEmpty && state.terminalSessions.isEmpty {
+                        if state.workspaces.isEmpty {
                             Text("No VS Code windows detected")
                                 .font(.system(size: 11))
                                 .foregroundStyle(.white.opacity(0.4))
