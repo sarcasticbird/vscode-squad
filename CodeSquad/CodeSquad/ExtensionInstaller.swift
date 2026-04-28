@@ -5,7 +5,16 @@ enum ExtensionInstaller {
     private static let logger = Logger(subsystem: "com.cdolan.codesquad", category: "ExtensionInstaller")
 
     static let extensionPrefix = "codesquad-shim-"
-    static let sourcePath = NSHomeDirectory() + "/Projects/vscode-squad/CodeSquadExtension"
+
+    static var sourcePath: String {
+        if let resourceURL = Bundle.main.resourceURL {
+            let bundled = resourceURL.appendingPathComponent("CodeSquadExtension").path
+            if FileManager.default.fileExists(atPath: bundled) {
+                return bundled
+            }
+        }
+        return NSHomeDirectory() + "/Projects/vscode-squad/CodeSquadExtension"
+    }
 
     static var currentVersion: String? {
         let packagePath = sourcePath + "/package.json"
@@ -31,18 +40,20 @@ enum ExtensionInstaller {
     }
 
     static func checkInstalled() -> Bool {
-        extensionDirs.contains { dir in
-            let path = dir + "/" + extensionName
+        let target = extensionName
+        return extensionDirs.contains { dir in
+            let path = dir + "/" + target
             var isDir: ObjCBool = false
-            return FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
+            return FileManager.default.fileExists(atPath: path, isDirectory: &isDir) && isDir.boolValue
         }
     }
 
     static func install() throws {
         let fm = FileManager.default
+        let source = sourcePath
 
-        guard fm.fileExists(atPath: sourcePath) else {
-            logger.error("Extension source not found at \(sourcePath, privacy: .public)")
+        guard fm.fileExists(atPath: source) else {
+            logger.error("Extension source not found at \(source, privacy: .public)")
             return
         }
 
@@ -54,8 +65,8 @@ enum ExtensionInstaller {
             let target = dir + "/" + extensionName
             if fm.fileExists(atPath: target) { continue }
 
-            try fm.createSymbolicLink(atPath: target, withDestinationPath: sourcePath)
-            logger.info("Extension symlinked: \(target, privacy: .public) → \(sourcePath, privacy: .public)")
+            try fm.createSymbolicLink(atPath: target, withDestinationPath: source)
+            logger.info("Extension symlinked: \(target, privacy: .public) → \(source, privacy: .public)")
         }
     }
 

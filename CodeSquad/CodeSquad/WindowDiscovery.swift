@@ -150,8 +150,8 @@ final class WindowDiscovery {
     private nonisolated func resolveWorkspaceFolders(_ workspaces: inout [Workspace]) {
         let folderMap = loadWorkspaceFolderMap()
         for i in workspaces.indices {
-            let name = workspaces[i].name
-            if let folders = folderMap[name] {
+            guard workspaces[i].folderPaths.isEmpty else { continue }
+            if let folders = folderMap[workspaces[i].name] {
                 workspaces[i].folderPaths = folders
             }
         }

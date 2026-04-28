@@ -13,9 +13,14 @@ interface WorkspacePayload {
 }
 
 let registered = false;
+let outputChannel: vscode.OutputChannel;
 
 function getWindowId(): string {
-  return `${process.pid}`;
+  return vscode.env.sessionId;
+}
+
+function log(msg: string): void {
+  outputChannel?.appendLine(`[${new Date().toISOString()}] ${msg}`);
 }
 
 function buildPayload(): WorkspacePayload {
@@ -34,45 +39,69 @@ function buildPayload(): WorkspacePayload {
   };
 }
 
-function post(path: string, body: object, onSuccess?: () => void): void {
-  const data = JSON.stringify(body);
-  const url = new URL(path, BASE);
+function post(
+  path: string,
+  body: object,
+  onSuccess?: () => void
+): Promise<void> {
+  return new Promise((resolve) => {
+    const data = JSON.stringify(body);
+    const url = new URL(path, BASE);
 
-  const req = http.request(
-    {
-      hostname: url.hostname,
-      port: url.port,
-      path: url.pathname,
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(data),
+    const req = http.request(
+      {
+        hostname: url.hostname,
+        port: url.port,
+        path: url.pathname,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(data),
+        },
+        timeout: 2000,
       },
-      timeout: 2000,
-    },
-    (res) => {
-      if (res.statusCode === 200) {
-        onSuccess?.();
+      (res) => {
+        res.resume();
+        if (res.statusCode === 200) {
+          onSuccess?.();
+        } else {
+          log(`${path} returned ${res.statusCode}`);
+          registered = false;
+        }
+        resolve();
       }
-    }
-  );
+    );
 
-  req.on("error", () => {});
-  req.write(data);
-  req.end();
-}
+    req.on("error", (err) => {
+      if ((err as NodeJS.ErrnoException).code !== "ECONNREFUSED") {
+        log(`${path} error: ${err.message}`);
+      }
+      registered = false;
+      resolve();
+    });
 
-function register(): void {
-  post("/workspace/register", buildPayload(), () => {
-    registered = true;
+    req.on("timeout", () => {
+      req.destroy();
+      registered = false;
+      resolve();
+    });
+
+    req.write(data);
+    req.end();
   });
 }
 
-function deregister(): void {
-  post("/workspace/deregister", { windowId: getWindowId() });
+async function register(): Promise<void> {
+  await post("/workspace/register", buildPayload(), () => {
+    registered = true;
+    log(`Registered: ${getWindowId()}`);
+  });
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  outputChannel = vscode.window.createOutputChannel("CodeSquad");
+  context.subscriptions.push(outputChannel);
+
   register();
 
   context.subscriptions.push(
@@ -81,14 +110,20 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.onDidChangeWindowState((e) => {
       if (e.focused) {
         if (!registered) {
-          register();
+          register().then(() => {
+            if (registered) {
+              post("/workspace/focus", { windowId: getWindowId() });
+            }
+          });
+        } else {
+          post("/workspace/focus", { windowId: getWindowId() });
         }
-        post("/workspace/focus", { windowId: getWindowId() });
       }
     })
   );
 }
 
-export function deactivate(): void {
-  deregister();
+export function deactivate(): Promise<void> {
+  log(`Deregistering: ${getWindowId()}`);
+  return post("/workspace/deregister", { windowId: getWindowId() });
 }

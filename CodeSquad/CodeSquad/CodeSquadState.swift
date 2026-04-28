@@ -63,7 +63,7 @@ final class CodeSquadState: ObservableObject {
 
     func claudeFinished(workspace: String) {
         let current = claudeStatus[workspace]
-        if current == .working || current == .permissionNeeded {
+        if current == .working || current == .permissionNeeded || current == .idle {
             claudeStatus[workspace] = .needsAttention
             panelMinimized = false
         }

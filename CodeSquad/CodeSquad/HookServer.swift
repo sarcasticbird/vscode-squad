@@ -50,6 +50,7 @@ final class HookServer {
         do {
             let params = NWParameters.tcp
             params.allowLocalEndpointReuse = true
+            params.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: port)!)
             listener = try NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!)
         } catch {
             logger.error("Failed to create listener: \(error)")
@@ -88,10 +89,12 @@ final class HookServer {
 
     private nonisolated func receiveHTTPRequest(on connection: NWConnection) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
-            guard let self else { return }
+            guard let self else {
+                connection.cancel()
+                return
+            }
 
-            if let error {
-                self.logger.error("Connection receive error: \(error)")
+            if error != nil {
                 connection.cancel()
                 return
             }
@@ -160,8 +163,8 @@ final class HookServer {
             return (400, "bad payload")
         }
 
-        DispatchQueue.main.async { [payload, path] in
-            self.routePayload(payload, path: path)
+        DispatchQueue.main.async { [weak self, payload, path] in
+            self?.routePayload(payload, path: path)
         }
 
         return (200, "ok")
@@ -173,22 +176,22 @@ final class HookServer {
             guard let reg = try? JSONDecoder().decode(WorkspaceRegistration.self, from: bodyData) else {
                 return (400, "bad payload")
             }
-            DispatchQueue.main.async {
-                self.handleWorkspaceRegister(reg)
+            DispatchQueue.main.async { [weak self] in
+                self?.handleWorkspaceRegister(reg)
             }
         case "/workspace/deregister":
             guard let evt = try? JSONDecoder().decode(WorkspaceEvent.self, from: bodyData) else {
                 return (400, "bad payload")
             }
-            DispatchQueue.main.async {
-                self.handleWorkspaceDeregister(evt)
+            DispatchQueue.main.async { [weak self] in
+                self?.handleWorkspaceDeregister(evt)
             }
         case "/workspace/focus":
             guard let evt = try? JSONDecoder().decode(WorkspaceEvent.self, from: bodyData) else {
                 return (400, "bad payload")
             }
-            DispatchQueue.main.async {
-                self.handleWorkspaceFocus(evt)
+            DispatchQueue.main.async { [weak self] in
+                self?.handleWorkspaceFocus(evt)
             }
         default:
             return (404, "not found")
@@ -202,9 +205,11 @@ final class HookServer {
 
         guard let workspace else {
             if !isRetry, let discovery = windowDiscovery {
-                logger.info("No workspace match for cwd: \(payload.cwd, privacy: .public) — refreshing windows")
+                logger.info("No workspace match for cwd: \(payload.cwd, privacy: .public) — refreshing and retrying")
                 discovery.refresh()
-                routePayload(payload, path: path, isRetry: true)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    self?.routePayload(payload, path: path, isRetry: true)
+                }
             } else {
                 logger.warning("No workspace match for cwd: \(payload.cwd, privacy: .public) (after retry)")
             }
