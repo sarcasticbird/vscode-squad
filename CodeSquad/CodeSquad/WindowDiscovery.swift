@@ -5,7 +5,7 @@ import OSLog
 @MainActor
 final class WindowDiscovery {
     private let state: CodeSquadState
-    private let logger = Logger(subsystem: "com.cdolan.codesquad", category: "WindowDiscovery")
+    private let logger = Logger(subsystem: "com.codesquad.app", category: "WindowDiscovery")
     private var observers: [pid_t: AXObserver] = [:]
     private var refreshTimer: Timer?
     private var workspaceObservers: [NSObjectProtocol] = []

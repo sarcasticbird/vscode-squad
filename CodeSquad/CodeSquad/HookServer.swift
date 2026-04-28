@@ -38,7 +38,7 @@ final class HookServer {
     private let port: UInt16
     private var listener: NWListener?
     private let state: CodeSquadState
-    private let logger = Logger(subsystem: "com.cdolan.codesquad", category: "HookServer")
+    private let logger = Logger(subsystem: "com.codesquad.app", category: "HookServer")
     weak var windowDiscovery: WindowDiscovery?
 
     init(port: UInt16 = 9876, state: CodeSquadState) {

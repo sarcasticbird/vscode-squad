@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 
 enum ExtensionInstaller {
-    private static let logger = Logger(subsystem: "com.cdolan.codesquad", category: "ExtensionInstaller")
+    private static let logger = Logger(subsystem: "com.codesquad.app", category: "ExtensionInstaller")
 
     static let extensionPrefix = "codesquad-shim-"
 

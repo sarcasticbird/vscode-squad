@@ -3,7 +3,7 @@ import OSLog
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let logger = Logger(subsystem: "com.cdolan.codesquad", category: "App")
+    private let logger = Logger(subsystem: "com.codesquad.app", category: "App")
     private var panelController: PanelController?
     private var hookServer: HookServer?
     private var windowDiscovery: WindowDiscovery?
@@ -12,9 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
-        logger.info("AX trusted: \(AXIsProcessTrusted())")
-
         let state = CodeSquadState.shared
+
+        logger.info("AX trusted: \(AXIsProcessTrusted())")
 
         if HookInstaller.checkInstalled() {
             logger.info("Hooks already installed")

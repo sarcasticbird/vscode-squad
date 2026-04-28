@@ -7,7 +7,7 @@
     <key>CFBundleDisplayName</key>
     <string>CodeSquad</string>
     <key>CFBundleIdentifier</key>
-    <string>com.cdolan.codesquad</string>
+    <string>com.codesquad.app</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>
