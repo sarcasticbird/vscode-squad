@@ -46,7 +46,7 @@ final class ClaudeProcessScanner {
 
     private func scan() {
         let sessions = Self.findAllClaudeSessions()
-        logger.info("Scan found \(sessions.count) Claude session(s)")
+        logger.debug("Scan found \(sessions.count) Claude session(s)")
         updateState(with: sessions)
     }
 

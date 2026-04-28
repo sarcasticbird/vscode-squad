@@ -76,7 +76,7 @@ final class WindowDiscovery {
         }
         state.initialScanDone = true
         clearAttentionForFocusedWindow(apps: apps)
-        logger.info("Refreshed: \(newWorkspaces.count) workspace(s)")
+        logger.debug("Refreshed: \(newWorkspaces.count) workspace(s)")
     }
 
     private nonisolated func axTitle(of element: AXUIElement) -> String? {
@@ -129,7 +129,7 @@ final class WindowDiscovery {
 
         CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes)
         observers[pid] = observer
-        logger.info("AX observer registered for PID \(pid)")
+        logger.debug("AX observer registered for PID \(pid)")
     }
 
     private func removeAllAXObservers() {

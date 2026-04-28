@@ -47,10 +47,16 @@ final class HookServer {
     }
 
     func start() {
+        guard let nwPort = NWEndpoint.Port(rawValue: port) else {
+            logger.error("Invalid port: \(self.port)")
+            return
+        }
+
         do {
             let params = NWParameters.tcp
+            params.requiredLocalEndpoint = NWEndpoint.hostPort(host: .ipv4(.loopback), port: nwPort)
             params.allowLocalEndpointReuse = true
-            listener = try NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!)
+            listener = try NWListener(using: params, on: nwPort)
         } catch {
             logger.error("Failed to create listener: \(error)")
             return
@@ -228,7 +234,7 @@ final class HookServer {
         }
 
         let name = workspace.name
-        logger.info("\(path, privacy: .public) → \(name, privacy: .public) (session: \(payload.sessionId, privacy: .public))")
+        logger.debug("\(path, privacy: .public) → \(name, privacy: .public) (session: \(payload.sessionId, privacy: .public))")
 
         switch path {
         case "/hook/session-start", "/hook/working":
@@ -248,18 +254,18 @@ final class HookServer {
 
     @MainActor
     private func handleWorkspaceRegister(_ reg: WorkspaceRegistration) {
-        logger.info("Extension registered: \(reg.workspaceName, privacy: .public) folders=\(reg.folderPaths.joined(separator: ", "), privacy: .public)")
+        logger.debug("Extension registered: \(reg.workspaceName, privacy: .public) folders=\(reg.folderPaths.joined(separator: ", "), privacy: .public)")
         state.registerExtensionWorkspace(name: reg.workspaceName, folderPaths: reg.folderPaths)
     }
 
     @MainActor
     private func handleWorkspaceDeregister(_ evt: WorkspaceEvent) {
-        logger.info("Extension deregistered: windowId=\(evt.windowId, privacy: .public)")
+        logger.debug("Extension deregistered: windowId=\(evt.windowId, privacy: .public)")
     }
 
     @MainActor
     private func handleWorkspaceFocus(_ evt: WorkspaceEvent) {
-        logger.info("Extension focus: windowId=\(evt.windowId, privacy: .public)")
+        logger.debug("Extension focus: windowId=\(evt.windowId, privacy: .public)")
     }
 
     private nonisolated func sendHTTPResponse(on connection: NWConnection, statusCode: Int, body: String) {

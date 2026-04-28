@@ -21,3 +21,9 @@ DerivedData/
 
 # Generated build artifacts (regenerate via scripts/)
 CodeSquad/scripts/icon_source.png
+
+# Personal workspace files
+*.code-workspace
+
+# Internal development docs
+docs/superpowers/

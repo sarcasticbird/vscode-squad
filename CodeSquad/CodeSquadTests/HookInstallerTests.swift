@@ -20,7 +20,13 @@ struct HookInstallerTests {
                     ["matcher": "permission_prompt|idle_prompt",
                      "hooks": [["type": "http", "url": "http://127.0.0.1:9876/hook/attention", "async": true]]]
                 ],
+                "PermissionRequest": [
+                    ["hooks": [["type": "http", "url": "http://127.0.0.1:9876/hook/permission", "async": true]]]
+                ],
                 "PreToolUse": [
+                    ["hooks": [["type": "http", "url": "http://127.0.0.1:9876/hook/working", "async": true]]]
+                ],
+                "UserPromptSubmit": [
                     ["hooks": [["type": "http", "url": "http://127.0.0.1:9876/hook/working", "async": true]]]
                 ],
                 "Stop": [
