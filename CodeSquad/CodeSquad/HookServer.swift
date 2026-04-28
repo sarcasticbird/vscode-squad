@@ -50,7 +50,6 @@ final class HookServer {
         do {
             let params = NWParameters.tcp
             params.allowLocalEndpointReuse = true
-            params.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: port)!)
             listener = try NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!)
         } catch {
             logger.error("Failed to create listener: \(error)")
@@ -58,6 +57,10 @@ final class HookServer {
         }
 
         listener?.newConnectionHandler = { [weak self] connection in
+            guard self?.isLoopback(connection) == true else {
+                connection.cancel()
+                return
+            }
             DispatchQueue.main.async {
                 self?.handleConnection(connection)
             }
@@ -80,6 +83,14 @@ final class HookServer {
     func stop() {
         listener?.cancel()
         listener = nil
+    }
+
+    private nonisolated func isLoopback(_ connection: NWConnection) -> Bool {
+        guard case .hostPort(let host, _) = connection.currentPath?.remoteEndpoint else {
+            return false
+        }
+        let addr = "\(host)"
+        return addr == "127.0.0.1" || addr == "::1"
     }
 
     private func handleConnection(_ connection: NWConnection) {

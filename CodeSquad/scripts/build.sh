@@ -14,8 +14,23 @@ cd "$PROJECT_DIR"
 echo "==> Building..."
 swift build 2>&1
 
-echo "==> Copying binary to app bundle..."
+echo "==> Assembling app bundle..."
+mkdir -p "$APP_BUNDLE/Contents/MacOS"
+mkdir -p "$APP_BUNDLE/Contents/Resources"
 cp "$BINARY" "$APP_BUNDLE/Contents/MacOS/CodeSquad"
+cp "$PROJECT_DIR/CodeSquad/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
+
+ASSETS_DIR="$PROJECT_DIR/CodeSquad/Assets.xcassets"
+if [ -d "$ASSETS_DIR" ]; then
+    echo "==> Compiling asset catalog..."
+    xcrun actool "$ASSETS_DIR" \
+        --compile "$APP_BUNDLE/Contents/Resources" \
+        --platform macosx \
+        --minimum-deployment-target 14.0 \
+        --app-icon AppIcon \
+        --output-partial-info-plist "$APP_BUNDLE/Contents/Resources/AssetCatalog.plist" \
+        > /dev/null 2>&1
+fi
 
 if security find-identity -v -p codesigning | grep -q "$CERT_NAME"; then
     echo "==> Signing with '$CERT_NAME' certificate..."

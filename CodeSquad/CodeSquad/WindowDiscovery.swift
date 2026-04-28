@@ -97,7 +97,7 @@ final class WindowDiscovery {
         guard result == .success, let title = axTitle(of: focusedRef as! AXUIElement) else { return }
 
         let name = Workspace.parseWorkspaceName(from: title)
-        state.clearStatusAndCollapse(for: name)
+        state.clearAttention(for: name)
     }
 
     private nonisolated func isStandardWindow(_ window: AXUIElement) -> Bool {

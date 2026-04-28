@@ -63,13 +63,19 @@ final class CodeSquadState: ObservableObject {
 
     func claudeFinished(workspace: String) {
         let current = claudeStatus[workspace]
-        if current == .working || current == .permissionNeeded || current == .idle {
+        if current == .working || current == .permissionNeeded {
             claudeStatus[workspace] = .needsAttention
             panelMinimized = false
         }
     }
 
-    func clearStatusAndCollapse(for workspace: String) {
+    func clearAttention(for workspace: String) {
+        if claudeStatus[workspace] == .needsAttention {
+            claudeStatus[workspace] = .idle
+        }
+    }
+
+    func clearAllAlerts(for workspace: String) {
         let current = claudeStatus[workspace]
         if current == .needsAttention || current == .permissionNeeded {
             claudeStatus[workspace] = .idle
