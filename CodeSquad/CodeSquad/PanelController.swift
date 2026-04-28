@@ -13,7 +13,8 @@ final class PanelController {
     private let state: CodeSquadState
     private var cancellables = Set<AnyCancellable>()
 
-    private let panelWidth: CGFloat = 260
+    private let panelMinWidth: CGFloat = 260
+    private let panelMaxWidth: CGFloat = 2400
     private let minimizedHeight: CGFloat = 32
     private let edgeMargin: CGFloat = 8
     private var userResized: Bool = false
@@ -40,8 +41,8 @@ final class PanelController {
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
         panel.isMovableByWindowBackground = true
-        panel.minSize = NSSize(width: panelWidth, height: 120)
-        panel.maxSize = NSSize(width: panelWidth, height: 2000)
+        panel.minSize = NSSize(width: panelMinWidth, height: 120)
+        panel.maxSize = NSSize(width: panelMaxWidth, height: 2000)
         panel.contentView = hostingView
 
         panel.orderFrontRegardless()
@@ -85,16 +86,17 @@ final class PanelController {
         let screenFrame = screen.visibleFrame
         let currentFrame = panel.frame
 
+        let currentWidth = currentFrame.width
         let newFrame: NSRect
         if minimized {
             let y = currentFrame.maxY - minimizedHeight
-            newFrame = NSRect(x: currentFrame.origin.x, y: y, width: panelWidth, height: minimizedHeight)
+            newFrame = NSRect(x: currentFrame.origin.x, y: y, width: currentWidth, height: minimizedHeight)
         } else {
             let contentHeight = rosterContentHeight()
             let rosterHeight = max(minimizedHeight, contentHeight)
             let clampedHeight = min(rosterHeight, screenFrame.height - 40)
             let y = currentFrame.maxY - clampedHeight
-            newFrame = NSRect(x: currentFrame.origin.x, y: y, width: panelWidth, height: clampedHeight)
+            newFrame = NSRect(x: currentFrame.origin.x, y: y, width: currentWidth, height: clampedHeight)
         }
 
         NSAnimationContext.runAnimationGroup { ctx in
@@ -138,8 +140,8 @@ final class PanelController {
         let contentHeight = rosterContentHeight()
         let height = max(minimizedHeight, contentHeight)
         let clampedHeight = min(height, screenFrame.height - 40)
-        let x = screenFrame.maxX - panelWidth - edgeMargin
+        let x = screenFrame.maxX - panelMinWidth - edgeMargin
         let y = screenFrame.maxY - clampedHeight - edgeMargin
-        return NSRect(x: x, y: y, width: panelWidth, height: clampedHeight)
+        return NSRect(x: x, y: y, width: panelMinWidth, height: clampedHeight)
     }
 }

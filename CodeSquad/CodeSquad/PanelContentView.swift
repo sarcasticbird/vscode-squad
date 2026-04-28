@@ -108,25 +108,21 @@ struct PanelContentView: View {
                 }
                 .padding(12)
             } else {
-                ScrollView {
-                    VStack(spacing: 4) {
-                        ForEach(state.workspaces) { workspace in
-                            WorkspaceCard(
-                                workspace: workspace,
-                                claudeStatus: state.claudeStatus[workspace.name] ?? .inactive,
-                                sessions: state.claudeSessions[workspace.name] ?? [],
-                                onTap: { focusWorkspace(workspace) }
-                            )
-                        }
-
-                        if state.workspaces.isEmpty {
-                            Text("No VS Code windows detected")
-                                .font(.system(size: 11))
-                                .foregroundStyle(panel.tertiaryText)
-                                .padding(12)
+                GeometryReader { geo in
+                    let useGrid = geo.size.width >= 480
+                    ScrollView {
+                        if useGrid {
+                            LazyVGrid(columns: gridColumns(for: geo.size.width), spacing: 4) {
+                                workspaceCards
+                            }
+                            .padding(.horizontal, 8)
+                        } else {
+                            VStack(spacing: 4) {
+                                workspaceCards
+                            }
+                            .padding(.horizontal, 8)
                         }
                     }
-                    .padding(.horizontal, 8)
                 }
             }
         }
@@ -139,6 +135,31 @@ struct PanelContentView: View {
                         .strokeBorder(panel.border, lineWidth: 1)
                 )
         )
+    }
+
+    @ViewBuilder
+    private var workspaceCards: some View {
+        ForEach(state.workspaces) { workspace in
+            WorkspaceCard(
+                workspace: workspace,
+                claudeStatus: state.claudeStatus[workspace.name] ?? .inactive,
+                sessions: state.claudeSessions[workspace.name] ?? [],
+                onTap: { focusWorkspace(workspace) }
+            )
+        }
+
+        if state.workspaces.isEmpty {
+            Text("No VS Code windows detected")
+                .font(.system(size: 11))
+                .foregroundStyle(panel.tertiaryText)
+                .padding(12)
+        }
+    }
+
+    private func gridColumns(for width: CGFloat) -> [GridItem] {
+        let minCardWidth: CGFloat = 220
+        let count = max(2, Int(width / minCardWidth))
+        return Array(repeating: GridItem(.flexible(), spacing: 4), count: count)
     }
 
     private func focusWorkspace(_ workspace: Workspace) {
