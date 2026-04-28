@@ -107,7 +107,7 @@ final class PanelController {
     private func rosterContentHeight() -> CGFloat {
         guard !state.workspaces.isEmpty else { return 120 }
 
-        let headerHeight: CGFloat = 40
+        let headerHeight: CGFloat = 32
         let cardPadding: CGFloat = 4
         let baseCardHeight: CGFloat = 44
         let sessionRowHeight: CGFloat = 18
