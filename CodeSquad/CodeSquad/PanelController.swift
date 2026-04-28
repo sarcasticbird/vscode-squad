@@ -15,7 +15,7 @@ final class PanelController {
 
     private let panelMinWidth: CGFloat = 260
     private let panelMaxWidth: CGFloat = 2400
-    private let minimizedHeight: CGFloat = 32
+    private let minimizedHeight: CGFloat = 26
     private let edgeMargin: CGFloat = 8
     private var userResized: Bool = false
 

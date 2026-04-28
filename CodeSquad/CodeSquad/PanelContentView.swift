@@ -24,34 +24,44 @@ struct PanelContentView: View {
     }
 
     private var minimizedBar: some View {
-        HStack(spacing: 6) {
-            Text("CodeSquad")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(panel.secondaryText)
-
-            if state.hasAttention {
-                Text("\(state.attentionCount)")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(.orange)
+        HStack(spacing: 4) {
+            ForEach(state.workspaces) { ws in
+                let status = state.claudeStatus[ws.name] ?? .inactive
+                HStack(spacing: 3) {
+                    Circle()
+                        .fill(dotColor(for: status))
+                        .frame(width: 6, height: 6)
+                    Text(shortName(ws.name))
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(panel.secondaryText)
+                }
+                .padding(.horizontal, 5)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(status == .needsAttention || status == .permissionNeeded
+                              ? Color.orange.opacity(0.15) : panel.cardDefault)
+                )
+                .onTapGesture { focusWorkspace(ws) }
             }
 
-            Spacer()
+            Spacer(minLength: 4)
 
             Image(systemName: "chevron.down")
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 8, weight: .semibold))
                 .foregroundStyle(panel.tertiaryText)
-                .frame(width: 24, height: 24)
+                .frame(width: 18, height: 18)
                 .contentShape(Rectangle())
                 .onTapGesture { state.toggleMinimized() }
 
             Image(systemName: "xmark")
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 8, weight: .semibold))
                 .foregroundStyle(panel.tertiaryText)
-                .frame(width: 24, height: 24)
+                .frame(width: 18, height: 18)
                 .contentShape(Rectangle())
                 .onTapGesture { NSApp.terminate(nil) }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .background(
@@ -62,6 +72,24 @@ struct PanelContentView: View {
                         .strokeBorder(panel.border, lineWidth: 1)
                 )
         )
+    }
+
+    private func dotColor(for status: ClaudeStatus) -> Color {
+        switch status {
+        case .working: return .green
+        case .permissionNeeded: return .purple
+        case .needsAttention: return .orange
+        case .idle: return .cyan.opacity(0.7)
+        case .inactive: return panel.inactiveDot
+        }
+    }
+
+    private func shortName(_ name: String) -> String {
+        let parts = name.split(whereSeparator: { $0 == "-" || $0 == "_" || $0 == " " || $0 == "." })
+        if parts.count >= 2 {
+            return String(parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
+        }
+        return String(name.prefix(2)).uppercased()
     }
 
     private var rosterView: some View {
