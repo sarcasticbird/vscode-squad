@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>Conductor</string>
+    <string>CodeSquad</string>
     <key>CFBundleDisplayName</key>
-    <string>Conductor</string>
+    <string>CodeSquad</string>
     <key>CFBundleIdentifier</key>
-    <string>com.cdolan.conductor</string>
+    <string>com.cdolan.codesquad</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>
@@ -15,12 +15,12 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>
-    <string>Conductor</string>
+    <string>CodeSquad</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSAccessibilityUsageDescription</key>
-    <string>Conductor needs Accessibility access to discover VS Code windows and bring them to focus when Claude Code needs your attention.</string>
+    <string>CodeSquad needs Accessibility access to discover VS Code windows and bring them to focus when Claude Code needs your attention.</string>
 </dict>
 </plist>

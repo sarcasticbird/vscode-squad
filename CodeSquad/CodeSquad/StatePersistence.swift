@@ -14,11 +14,11 @@ struct PersistedState: Codable {
 }
 
 enum StatePersistence {
-    private static let logger = Logger(subsystem: "com.cdolan.conductor", category: "StatePersistence")
+    private static let logger = Logger(subsystem: "com.cdolan.codesquad", category: "StatePersistence")
 
     static var defaultPath: String {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return appSupport.appendingPathComponent("Conductor/state.json").path
+        return appSupport.appendingPathComponent("CodeSquad/state.json").path
     }
 
     static func load(from path: String? = nil) -> PersistedState {

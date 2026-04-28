@@ -25,10 +25,10 @@ struct HookPayload: Decodable, Sendable {
 final class HookServer {
     private let port: UInt16
     private var listener: NWListener?
-    private let state: ConductorState
-    private let logger = Logger(subsystem: "com.cdolan.conductor", category: "HookServer")
+    private let state: CodeSquadState
+    private let logger = Logger(subsystem: "com.cdolan.codesquad", category: "HookServer")
 
-    init(port: UInt16 = 9876, state: ConductorState) {
+    init(port: UInt16 = 9876, state: CodeSquadState) {
         self.port = port
         self.state = state
     }
@@ -119,7 +119,9 @@ final class HookServer {
             return (405, "method not allowed")
         }
 
-        guard path == "/notify" || path == "/stop" else {
+        let validPaths: Set = ["/hook/attention", "/hook/working", "/hook/stopped", "/hook/session-start", "/hook/session-end",
+                               "/notify", "/stop"]
+        guard validPaths.contains(path) else {
             return (404, "not found")
         }
 
@@ -148,18 +150,25 @@ final class HookServer {
 
     @MainActor
     private func routePayload(_ payload: HookPayload, path: String) {
-        guard let workspace = state.workspaces.first(where: { $0.matchesCWD(payload.cwd) }) else {
+        let workspace = state.workspaces.first(where: { $0.matchesCWD(payload.cwd) })
+            ?? state.terminalSessions.first(where: { $0.matchesCWD(payload.cwd) })
+        guard let workspace else {
             logger.warning("No workspace match for cwd: \(payload.cwd)")
             return
         }
 
+        let name = workspace.name
+        logger.info("\(path) → \(name) (session: \(payload.sessionId))")
+
         switch path {
-        case "/notify":
-            logger.info("Badge set for \(workspace.name) (session: \(payload.sessionId))")
-            state.setBadge(for: workspace.name)
-        case "/stop":
-            logger.info("Badge cleared for \(workspace.name) (session: \(payload.sessionId))")
-            state.clearBadge(for: workspace.name)
+        case "/hook/session-start", "/hook/working":
+            state.claudeWorking(workspace: name)
+        case "/hook/session-end":
+            state.claudeFinished(workspace: name)
+        case "/hook/attention", "/notify":
+            state.claudeNeedsAttention(workspace: name)
+        case "/hook/stopped", "/stop":
+            state.claudeFinished(workspace: name)
         default:
             break
         }

@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import Conductor
+@testable import CodeSquad
 
 @Suite("StatePersistence")
 struct StatePersistenceTests {

@@ -1,5 +1,5 @@
 import Testing
-@testable import Conductor
+@testable import CodeSquad
 
 @Suite("Workspace title parsing")
 struct WorkspaceTitleParsingTests {

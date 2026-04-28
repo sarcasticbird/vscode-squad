@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import Conductor
+@testable import CodeSquad
 
 @Suite("HookInstaller")
 struct HookInstallerTests {
@@ -17,11 +17,21 @@ struct HookInstallerTests {
         let settings: [String: Any] = [
             "hooks": [
                 "Notification": [
-                    ["hooks": [["type": "http", "url": "http://127.0.0.1:9876/notify"]]]
+                    ["matcher": "permission_prompt|idle_prompt",
+                     "hooks": [["type": "http", "url": "http://127.0.0.1:9876/hook/attention", "async": true]]]
+                ],
+                "PreToolUse": [
+                    ["hooks": [["type": "http", "url": "http://127.0.0.1:9876/hook/working", "async": true]]]
                 ],
                 "Stop": [
-                    ["hooks": [["type": "http", "url": "http://127.0.0.1:9876/stop"]]]
-                ]
+                    ["hooks": [["type": "http", "url": "http://127.0.0.1:9876/hook/stopped", "async": true]]]
+                ],
+                "SessionStart": [
+                    ["hooks": [["type": "http", "url": "http://127.0.0.1:9876/hook/session-start", "async": true]]]
+                ],
+                "SessionEnd": [
+                    ["hooks": [["type": "http", "url": "http://127.0.0.1:9876/hook/session-end", "async": true]]]
+                ],
             ]
         ]
         let data = try JSONSerialization.data(withJSONObject: settings)
@@ -49,6 +59,8 @@ struct HookInstallerTests {
         #expect(hooks["PreToolUse"] != nil)
         #expect(hooks["Notification"] != nil)
         #expect(hooks["Stop"] != nil)
+        #expect(hooks["SessionStart"] != nil)
+        #expect(hooks["SessionEnd"] != nil)
     }
 
     @Test("Creates settings from scratch when file is empty")
@@ -58,5 +70,7 @@ struct HookInstallerTests {
         let hooks = result["hooks"] as! [String: Any]
         #expect(hooks["Notification"] != nil)
         #expect(hooks["Stop"] != nil)
+        #expect(hooks["SessionStart"] != nil)
+        #expect(hooks["SessionEnd"] != nil)
     }
 }

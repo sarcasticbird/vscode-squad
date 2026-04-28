@@ -2,10 +2,18 @@ import Foundation
 import OSLog
 
 enum HookInstaller {
-    private static let logger = Logger(subsystem: "com.cdolan.conductor", category: "HookInstaller")
+    private static let logger = Logger(subsystem: "com.cdolan.codesquad", category: "HookInstaller")
 
-    static let conductorNotifyURL = "http://127.0.0.1:9876/notify"
-    static let conductorStopURL = "http://127.0.0.1:9876/stop"
+    static let baseURL = "http://127.0.0.1:9876"
+
+    static let requiredHooks: [(event: String, path: String, matcher: String?)] = [
+        ("Notification", "/hook/attention", "permission_prompt|idle_prompt"),
+        ("PermissionRequest", "/hook/attention", nil),
+        ("PreToolUse", "/hook/working", nil),
+        ("Stop", "/hook/stopped", nil),
+        ("SessionStart", "/hook/session-start", nil),
+        ("SessionEnd", "/hook/session-end", nil),
+    ]
 
     static var settingsPath: String {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
@@ -18,9 +26,9 @@ enum HookInstaller {
             return false
         }
 
-        let hasNotify = hookArrayContainsURL(hooks["Notification"], url: conductorNotifyURL)
-        let hasStop = hookArrayContainsURL(hooks["Stop"], url: conductorStopURL)
-        return hasNotify && hasStop
+        return requiredHooks.allSatisfy { hookDef in
+            hookArrayContainsURL(hooks[hookDef.event], url: "\(baseURL)\(hookDef.path)")
+        }
     }
 
     static func checkInstalled() -> Bool {
@@ -55,19 +63,19 @@ enum HookInstaller {
         var json = (try? JSONSerialization.jsonObject(with: existingData) as? [String: Any]) ?? [:]
         var hooks = (json["hooks"] as? [String: Any]) ?? [:]
 
-        let notifyHook: [String: Any] = ["type": "http", "url": conductorNotifyURL]
-        let stopHook: [String: Any] = ["type": "http", "url": conductorStopURL]
-
-        if !hookArrayContainsURL(hooks["Notification"], url: conductorNotifyURL) {
-            var existing = (hooks["Notification"] as? [[String: Any]]) ?? []
-            existing.append(["hooks": [notifyHook]])
-            hooks["Notification"] = existing
-        }
-
-        if !hookArrayContainsURL(hooks["Stop"], url: conductorStopURL) {
-            var existing = (hooks["Stop"] as? [[String: Any]]) ?? []
-            existing.append(["hooks": [stopHook]])
-            hooks["Stop"] = existing
+        for hookDef in requiredHooks {
+            let url = "\(baseURL)\(hookDef.path)"
+            if !hookArrayContainsURL(hooks[hookDef.event], url: url) {
+                var httpHook: [String: Any] = ["type": "http", "url": url]
+                httpHook["async"] = true
+                var entry: [String: Any] = ["hooks": [httpHook]]
+                if let matcher = hookDef.matcher {
+                    entry["matcher"] = matcher
+                }
+                var existing = (hooks[hookDef.event] as? [[String: Any]]) ?? []
+                existing.append(entry)
+                hooks[hookDef.event] = existing
+            }
         }
 
         json["hooks"] = hooks
