@@ -6,6 +6,7 @@ enum ClaudeStatus: Equatable {
     case inactive
     case idle
     case working
+    case permissionNeeded
     case needsAttention
 }
 
@@ -20,8 +21,10 @@ final class CodeSquadState: ObservableObject {
     @Published var axTrusted: Bool = AXIsProcessTrusted()
     @Published var initialScanDone: Bool = false
 
+    var extensionFolders: [String: [String]] = [:]
+
     var attentionCount: Int {
-        claudeStatus.values.filter { $0 == .needsAttention }.count
+        claudeStatus.values.filter { $0 == .needsAttention || $0 == .permissionNeeded }.count
     }
 
     var hasAttention: Bool {
@@ -42,9 +45,15 @@ final class CodeSquadState: ObservableObject {
     }
 
     func claudeWorking(workspace: String) {
-        if claudeStatus[workspace] != .needsAttention {
+        let current = claudeStatus[workspace]
+        if current != .needsAttention && current != .permissionNeeded {
             claudeStatus[workspace] = .working
         }
+    }
+
+    func claudePermissionNeeded(workspace: String) {
+        claudeStatus[workspace] = .permissionNeeded
+        panelMinimized = false
     }
 
     func claudeNeedsAttention(workspace: String) {
@@ -54,16 +63,28 @@ final class CodeSquadState: ObservableObject {
 
     func claudeFinished(workspace: String) {
         let current = claudeStatus[workspace]
-        if current == .working {
+        if current == .working || current == .permissionNeeded {
             claudeStatus[workspace] = .needsAttention
             panelMinimized = false
         }
     }
 
     func clearStatusAndCollapse(for workspace: String) {
-        if claudeStatus[workspace] == .needsAttention {
+        let current = claudeStatus[workspace]
+        if current == .needsAttention || current == .permissionNeeded {
             claudeStatus[workspace] = .idle
         }
+    }
+
+    func registerExtensionWorkspace(name: String, folderPaths: [String]) {
+        extensionFolders[name] = folderPaths
+        if let idx = workspaces.firstIndex(where: { $0.name == name }) {
+            workspaces[idx].folderPaths = folderPaths
+        }
+    }
+
+    func deregisterExtensionWorkspace(name: String) {
+        extensionFolders.removeValue(forKey: name)
     }
 
     func toggleMinimized() {

@@ -8,7 +8,7 @@ enum HookInstaller {
 
     static let requiredHooks: [(event: String, path: String, matcher: String?)] = [
         ("Notification", "/hook/attention", "permission_prompt|idle_prompt"),
-        ("PermissionRequest", "/hook/attention", nil),
+        ("PermissionRequest", "/hook/permission", nil),
         ("PreToolUse", "/hook/working", nil),
         ("UserPromptSubmit", "/hook/working", nil),
         ("Stop", "/hook/stopped", nil),

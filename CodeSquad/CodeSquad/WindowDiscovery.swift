@@ -68,6 +68,7 @@ final class WindowDiscovery {
         }
 
         newWorkspaces.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        applyExtensionFolders(&newWorkspaces)
         resolveWorkspaceFolders(&newWorkspaces)
         state.workspaces = newWorkspaces
         if !newWorkspaces.isEmpty {
@@ -136,6 +137,14 @@ final class WindowDiscovery {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes)
         }
         observers.removeAll()
+    }
+
+    private func applyExtensionFolders(_ workspaces: inout [Workspace]) {
+        for i in workspaces.indices {
+            if let folders = state.extensionFolders[workspaces[i].name], !folders.isEmpty {
+                workspaces[i].folderPaths = folders
+            }
+        }
     }
 
     private nonisolated func resolveWorkspaceFolders(_ workspaces: inout [Workspace]) {

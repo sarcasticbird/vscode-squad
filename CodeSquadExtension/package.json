@@ -1,0 +1,28 @@
+{
+  "name": "codesquad-shim",
+  "displayName": "CodeSquad Shim",
+  "description": "Reports workspace identity and focus state to the CodeSquad native app",
+  "version": "0.1.0",
+  "publisher": "cdolan",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {},
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -21,6 +21,18 @@ struct HookPayload: Decodable, Sendable {
     }
 }
 
+struct WorkspaceRegistration: Decodable, Sendable {
+    let windowId: String
+    let workspaceName: String
+    let folderPaths: [String]
+    let claudeInstalled: Bool
+}
+
+struct WorkspaceEvent: Decodable, Sendable {
+    let windowId: String
+}
+
+
 @MainActor
 final class HookServer {
     private let port: UInt16
@@ -120,9 +132,11 @@ final class HookServer {
             return (405, "method not allowed")
         }
 
-        let validPaths: Set = ["/hook/attention", "/hook/working", "/hook/stopped", "/hook/session-start", "/hook/session-end",
-                               "/notify", "/stop"]
-        guard validPaths.contains(path) else {
+        let hookPaths: Set = ["/hook/attention", "/hook/working", "/hook/stopped", "/hook/session-start", "/hook/session-end",
+                              "/hook/permission", "/notify", "/stop"]
+        let wsPaths: Set = ["/workspace/register", "/workspace/deregister", "/workspace/focus"]
+
+        guard hookPaths.contains(path) || wsPaths.contains(path) else {
             return (404, "not found")
         }
 
@@ -133,6 +147,10 @@ final class HookServer {
         let bodyString = String(raw[bodyStart.upperBound...])
         guard let bodyData = bodyString.data(using: .utf8) else {
             return (400, "bad body encoding")
+        }
+
+        if wsPaths.contains(path) {
+            return processWorkspaceRequest(path: path, bodyData: bodyData)
         }
 
         let payload: HookPayload
@@ -149,29 +167,60 @@ final class HookServer {
         return (200, "ok")
     }
 
+    private nonisolated func processWorkspaceRequest(path: String, bodyData: Data) -> (Int, String) {
+        switch path {
+        case "/workspace/register":
+            guard let reg = try? JSONDecoder().decode(WorkspaceRegistration.self, from: bodyData) else {
+                return (400, "bad payload")
+            }
+            DispatchQueue.main.async {
+                self.handleWorkspaceRegister(reg)
+            }
+        case "/workspace/deregister":
+            guard let evt = try? JSONDecoder().decode(WorkspaceEvent.self, from: bodyData) else {
+                return (400, "bad payload")
+            }
+            DispatchQueue.main.async {
+                self.handleWorkspaceDeregister(evt)
+            }
+        case "/workspace/focus":
+            guard let evt = try? JSONDecoder().decode(WorkspaceEvent.self, from: bodyData) else {
+                return (400, "bad payload")
+            }
+            DispatchQueue.main.async {
+                self.handleWorkspaceFocus(evt)
+            }
+        default:
+            return (404, "not found")
+        }
+        return (200, "ok")
+    }
+
     @MainActor
     private func routePayload(_ payload: HookPayload, path: String, isRetry: Bool = false) {
         let workspace = state.workspaces.first(where: { $0.matchesCWD(payload.cwd) })
 
         guard let workspace else {
             if !isRetry, let discovery = windowDiscovery {
-                logger.info("No workspace match for cwd: \(payload.cwd) — refreshing windows")
+                logger.info("No workspace match for cwd: \(payload.cwd, privacy: .public) — refreshing windows")
                 discovery.refresh()
                 routePayload(payload, path: path, isRetry: true)
             } else {
-                logger.warning("No workspace match for cwd: \(payload.cwd) (after retry)")
+                logger.warning("No workspace match for cwd: \(payload.cwd, privacy: .public) (after retry)")
             }
             return
         }
 
         let name = workspace.name
-        logger.info("\(path) → \(name) (session: \(payload.sessionId))")
+        logger.info("\(path, privacy: .public) → \(name, privacy: .public) (session: \(payload.sessionId, privacy: .public))")
 
         switch path {
         case "/hook/session-start", "/hook/working":
             state.claudeWorking(workspace: name)
         case "/hook/session-end":
             state.claudeFinished(workspace: name)
+        case "/hook/permission":
+            state.claudePermissionNeeded(workspace: name)
         case "/hook/attention", "/notify":
             state.claudeNeedsAttention(workspace: name)
         case "/hook/stopped", "/stop":
@@ -179,6 +228,22 @@ final class HookServer {
         default:
             break
         }
+    }
+
+    @MainActor
+    private func handleWorkspaceRegister(_ reg: WorkspaceRegistration) {
+        logger.info("Extension registered: \(reg.workspaceName, privacy: .public) folders=\(reg.folderPaths.joined(separator: ", "), privacy: .public)")
+        state.registerExtensionWorkspace(name: reg.workspaceName, folderPaths: reg.folderPaths)
+    }
+
+    @MainActor
+    private func handleWorkspaceDeregister(_ evt: WorkspaceEvent) {
+        logger.info("Extension deregistered: windowId=\(evt.windowId, privacy: .public)")
+    }
+
+    @MainActor
+    private func handleWorkspaceFocus(_ evt: WorkspaceEvent) {
+        logger.info("Extension focus: windowId=\(evt.windowId, privacy: .public)")
     }
 
     private nonisolated func sendHTTPResponse(on connection: NWConnection, statusCode: Int, body: String) {
