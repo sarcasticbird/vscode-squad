@@ -16,11 +16,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let state = CodeSquadState.shared
 
-        do {
-            try HookInstaller.install()
-            logger.info("Hooks installed/updated")
-        } catch {
-            logger.error("Failed to install hooks: \(error)")
+        if HookInstaller.checkInstalled() {
+            logger.info("Hooks already installed")
+        } else {
+            do {
+                try HookInstaller.install()
+                logger.info("Hooks installed")
+            } catch {
+                logger.error("Failed to install hooks: \(error)")
+            }
+        }
+
+        if ExtensionInstaller.checkInstalled() {
+            logger.info("VS Code extension already installed")
+        } else {
+            do {
+                try ExtensionInstaller.install()
+                logger.info("VS Code extension installed")
+            } catch {
+                logger.error("Failed to install extension: \(error)")
+            }
         }
 
         windowDiscovery = WindowDiscovery(state: state)

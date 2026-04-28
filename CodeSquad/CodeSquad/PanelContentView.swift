@@ -178,7 +178,7 @@ struct WorkspaceCard: View {
 
                 if claudeStatus == .permissionNeeded {
                     Circle()
-                        .fill(Color.red)
+                        .fill(Color.purple)
                         .frame(width: 10, height: 10)
                 } else if claudeStatus == .needsAttention {
                     Circle()
@@ -219,7 +219,7 @@ struct WorkspaceCard: View {
         case .working:
             Circle().fill(.green)
         case .permissionNeeded:
-            Circle().fill(.red)
+            Circle().fill(.purple)
         case .needsAttention:
             Circle().fill(.orange)
         case .idle:
@@ -232,7 +232,7 @@ struct WorkspaceCard: View {
     private var sessionColor: Color {
         switch claudeStatus {
         case .working: return .green.opacity(0.6)
-        case .permissionNeeded: return .red.opacity(0.7)
+        case .permissionNeeded: return .purple.opacity(0.7)
         case .needsAttention: return .orange.opacity(0.7)
         case .idle: return .cyan.opacity(0.6)
         case .inactive: return .white.opacity(0.3)
@@ -249,7 +249,7 @@ struct WorkspaceCard: View {
 
     private var cardBackground: Color {
         if claudeStatus == .permissionNeeded {
-            return .red.opacity(0.15)
+            return .purple.opacity(0.15)
         } else if claudeStatus == .needsAttention {
             return .orange.opacity(0.15)
         } else if isHovered {
