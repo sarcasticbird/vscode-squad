@@ -6,6 +6,9 @@ CodeSquad is a macOS utility that monitors your Claude Code sessions across VS C
 2. An HTTP hook server that receives real-time events from Claude Code
 3. A process scanner that discovers active Claude sessions and reads their metadata
 
+<img width="306" height="414" alt="image" src="https://github.com/user-attachments/assets/f2526a1d-5b4d-40c3-9937-4a0cdeac2d36" />
+
+
 ## Prerequisites
 
 - macOS 14.0 or later
