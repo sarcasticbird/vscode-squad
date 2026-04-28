@@ -120,26 +120,10 @@ CodeSquad combines three discovery mechanisms:
 - **HTTP Hooks** — a local `NWListener` server receives `attention`, `working`, `stopped`, `session-start`, and `session-end` events from Claude Code, matching each event's `cwd` to a discovered workspace
 - **Process Scanning** — polls running processes via Darwin APIs (`proc_listpids`, `proc_pidpath`) every 3 seconds, reads session metadata from `~/.claude/sessions/{pid}.json`, and extracts chat titles from `~/.claude/projects/` JSONL files
 
+## Privacy
+
+CodeSquad runs entirely on your machine — no data leaves localhost. It reads Claude Code session files (`~/.claude/sessions/`, `~/.claude/projects/`) to display chat titles (the first line of your prompt) in the floating panel. The HTTP hook server binds to `127.0.0.1` only and is not accessible from the network.
+
 ## License
 
-MIT — see LICENSE section below.
-
-Copyright (c) 2025 CodeSquad Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+MIT — see [LICENSE](LICENSE).

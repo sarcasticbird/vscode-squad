@@ -12,7 +12,7 @@ xcuserdata/
 DerivedData/
 
 # Claude Code
-.claude/settings.local.json
+.claude/
 
 # Flox runtime artifacts
 .flox/cache/

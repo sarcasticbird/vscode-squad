@@ -56,7 +56,7 @@ final class HookServer {
             let params = NWParameters.tcp
             params.requiredLocalEndpoint = NWEndpoint.hostPort(host: .ipv4(.loopback), port: nwPort)
             params.allowLocalEndpointReuse = true
-            listener = try NWListener(using: params, on: nwPort)
+            listener = try NWListener(using: params)
         } catch {
             logger.error("Failed to create listener: \(error)")
             return

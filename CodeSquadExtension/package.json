@@ -3,7 +3,7 @@
   "displayName": "CodeSquad Shim",
   "description": "Reports workspace identity and focus state to the CodeSquad native app",
   "version": "0.1.0",
-  "publisher": "cdolan",
+  "publisher": "codesquad",
   "engines": {
     "vscode": "^1.85.0"
   },
