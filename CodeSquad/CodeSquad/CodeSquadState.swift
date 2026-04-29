@@ -75,10 +75,7 @@ final class CodeSquadState: ObservableObject {
     }
 
     func claudeWorking(workspace: String) {
-        let current = claudeStatus[workspace]
-        if current != .needsAttention {
-            claudeStatus[workspace] = .working
-        }
+        claudeStatus[workspace] = .working
     }
 
     func claudePermissionNeeded(workspace: String) {
@@ -86,8 +83,10 @@ final class CodeSquadState: ObservableObject {
     }
 
     func claudeNeedsAttention(workspace: String) {
-        if claudeStatus[workspace] == .permissionNeeded { return }
-        claudeStatus[workspace] = .needsAttention
+        let current = claudeStatus[workspace]
+        if current == .working || current == .permissionNeeded {
+            claudeStatus[workspace] = .needsAttention
+        }
     }
 
     func claudeFinished(workspace: String) {
