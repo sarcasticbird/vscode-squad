@@ -49,7 +49,7 @@ final class CodeSquadState: ObservableObject {
 
     func claudeWorking(workspace: String) {
         let current = claudeStatus[workspace]
-        if current != .needsAttention && current != .permissionNeeded {
+        if current != .needsAttention {
             claudeStatus[workspace] = .working
         }
     }
