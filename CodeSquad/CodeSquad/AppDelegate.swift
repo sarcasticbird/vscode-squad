@@ -59,10 +59,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         themeCancellable = state.$themeMode
             .dropFirst()
-            .sink { mode in
+            .sink { [weak self] mode in
                 var ps = StatePersistence.load()
                 ps.themeMode = mode.rawValue
-                try? StatePersistence.save(ps)
+                do {
+                    try StatePersistence.save(ps)
+                } catch {
+                    self?.logger.error("Failed to persist theme: \(error)")
+                }
             }
 
         logger.info("CodeSquad M0 running")
