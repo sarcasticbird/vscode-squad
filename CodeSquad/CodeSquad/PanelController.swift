@@ -129,7 +129,7 @@ final class PanelController {
                 return screen
             }
         }
-        return NSScreen.screens.first ?? NSScreen.main!
+        return NSScreen.main ?? NSScreen.screens.first!
     }
 
     private func initialFrame() -> NSRect {

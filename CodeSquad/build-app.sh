@@ -28,8 +28,5 @@ fi
 
 codesign -s - --force --deep "$APP_BUNDLE"
 
-# Reset TCC so the new binary hash gets a fresh grant
-tccutil reset Accessibility com.codesquad.app 2>/dev/null || true
-
 echo "Built $APP_BUNDLE"
 echo "Run with: open $APP_BUNDLE"

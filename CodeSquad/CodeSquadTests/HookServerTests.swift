@@ -9,7 +9,7 @@ struct HookPayloadTests {
         let json = """
         {
             "session_id": "abc123",
-            "cwd": "/Users/cdolan/Projects/vscode-squad",
+            "cwd": "/Users/dev/Projects/vscode-squad",
             "hook_event_name": "Notification",
             "notification_type": "permission_prompt"
         }
@@ -17,7 +17,7 @@ struct HookPayloadTests {
 
         let payload = try JSONDecoder().decode(HookPayload.self, from: json)
         #expect(payload.sessionId == "abc123")
-        #expect(payload.cwd == "/Users/cdolan/Projects/vscode-squad")
+        #expect(payload.cwd == "/Users/dev/Projects/vscode-squad")
         #expect(payload.hookEventName == "Notification")
     }
 
@@ -26,7 +26,7 @@ struct HookPayloadTests {
         let json = """
         {
             "session_id": "abc123",
-            "cwd": "/Users/cdolan/Projects/vscode-squad",
+            "cwd": "/Users/dev/Projects/vscode-squad",
             "hook_event_name": "Stop"
         }
         """.data(using: .utf8)!

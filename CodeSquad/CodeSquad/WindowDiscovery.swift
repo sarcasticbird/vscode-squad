@@ -94,7 +94,7 @@ final class WindowDiscovery {
         let axApp = AXUIElementCreateApplication(frontApp.processIdentifier)
         var focusedRef: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedRef)
-        guard result == .success, let title = axTitle(of: focusedRef as! AXUIElement) else { return }
+        guard result == .success, let focusedRef, let title = axTitle(of: (focusedRef as! AXUIElement)) else { return }
 
         let name = Workspace.parseWorkspaceName(from: title)
         state.clearAttention(for: name)
@@ -122,7 +122,7 @@ final class WindowDiscovery {
         let result = AXObserverCreate(pid, callback, &observer)
         guard result == .success, let observer else { return }
 
-        let refcon = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
+        let refcon = UnsafeMutableRawPointer(Unmanaged.passRetained(self).toOpaque())
 
         AXObserverAddNotification(observer, appElement, kAXWindowCreatedNotification as CFString, refcon)
         AXObserverAddNotification(observer, appElement, kAXUIElementDestroyedNotification as CFString, refcon)
@@ -136,7 +136,11 @@ final class WindowDiscovery {
         for (_, observer) in observers {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes)
         }
+        let count = observers.count
         observers.removeAll()
+        for _ in 0..<count {
+            Unmanaged.passUnretained(self).release()
+        }
     }
 
     private func applyExtensionFolders(_ workspaces: inout [Workspace]) {
