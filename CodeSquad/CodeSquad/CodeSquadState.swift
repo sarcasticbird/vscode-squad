@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import ApplicationServices
+import SwiftUI
 
 enum ClaudeStatus: Equatable {
     case inactive
@@ -8,6 +9,34 @@ enum ClaudeStatus: Equatable {
     case working
     case permissionNeeded
     case needsAttention
+}
+
+enum ThemeMode: String, Codable, CaseIterable {
+    case system
+    case light
+    case dark
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .system: return "circle.lefthalf.filled"
+        case .light: return "sun.max.fill"
+        case .dark: return "moon.fill"
+        }
+    }
+
+    func next() -> ThemeMode {
+        let all = ThemeMode.allCases
+        let idx = all.firstIndex(of: self)!
+        return all[(idx + 1) % all.count]
+    }
 }
 
 @MainActor
@@ -20,6 +49,7 @@ final class CodeSquadState: ObservableObject {
     @Published var panelMinimized: Bool = false
     @Published var axTrusted: Bool = AXIsProcessTrusted()
     @Published var initialScanDone: Bool = false
+    @Published var themeMode: ThemeMode = .system
 
     var extensionFolders: [String: [String]] = [:]
 
@@ -41,12 +71,15 @@ final class CodeSquadState: ObservableObject {
 
     func claudeProcessGone(workspace: String) {
         claudeSessions.removeValue(forKey: workspace)
-        claudeStatus[workspace] = .inactive
+        let current = claudeStatus[workspace]
+        if current != .needsAttention && current != .permissionNeeded {
+            claudeStatus[workspace] = .inactive
+        }
     }
 
     func claudeWorking(workspace: String) {
         let current = claudeStatus[workspace]
-        if current != .needsAttention && current != .permissionNeeded {
+        if current != .needsAttention {
             claudeStatus[workspace] = .working
         }
     }
@@ -57,6 +90,7 @@ final class CodeSquadState: ObservableObject {
     }
 
     func claudeNeedsAttention(workspace: String) {
+        if claudeStatus[workspace] == .permissionNeeded { return }
         claudeStatus[workspace] = .needsAttention
         panelMinimized = false
     }
@@ -69,13 +103,7 @@ final class CodeSquadState: ObservableObject {
         }
     }
 
-    func clearAttention(for workspace: String) {
-        if claudeStatus[workspace] == .needsAttention {
-            claudeStatus[workspace] = .idle
-        }
-    }
-
-    func clearAllAlerts(for workspace: String) {
+    func clearStatusAndCollapse(for workspace: String) {
         let current = claudeStatus[workspace]
         if current == .needsAttention || current == .permissionNeeded {
             claudeStatus[workspace] = .idle

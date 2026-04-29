@@ -75,7 +75,6 @@ final class WindowDiscovery {
             state.axTrusted = true
         }
         state.initialScanDone = true
-        clearAttentionForFocusedWindow(apps: apps)
         logger.debug("Refreshed: \(newWorkspaces.count) workspace(s)")
     }
 
@@ -84,20 +83,6 @@ final class WindowDiscovery {
         let result = AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
         guard result == .success else { return nil }
         return titleRef as? String
-    }
-
-    private func clearAttentionForFocusedWindow(apps: [NSRunningApplication]) {
-        guard let frontApp = NSWorkspace.shared.frontmostApplication,
-              let bundleID = frontApp.bundleIdentifier,
-              bundleIDs.contains(bundleID) else { return }
-
-        let axApp = AXUIElementCreateApplication(frontApp.processIdentifier)
-        var focusedRef: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedRef)
-        guard result == .success, let focusedRef, let title = axTitle(of: (focusedRef as! AXUIElement)) else { return }
-
-        let name = Workspace.parseWorkspaceName(from: title)
-        state.clearAttention(for: name)
     }
 
     private nonisolated func isStandardWindow(_ window: AXUIElement) -> Bool {

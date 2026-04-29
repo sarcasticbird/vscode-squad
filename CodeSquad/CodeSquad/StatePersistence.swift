@@ -5,11 +5,13 @@ struct PersistedState: Codable {
     var panelX: Double?
     var panelY: Double?
     var hooksInstalled: Bool
+    var themeMode: String?
 
-    init(panelX: Double? = nil, panelY: Double? = nil, hooksInstalled: Bool = false) {
+    init(panelX: Double? = nil, panelY: Double? = nil, hooksInstalled: Bool = false, themeMode: String? = nil) {
         self.panelX = panelX
         self.panelY = panelY
         self.hooksInstalled = hooksInstalled
+        self.themeMode = themeMode
     }
 }
 

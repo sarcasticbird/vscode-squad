@@ -17,6 +17,7 @@ enum ExtensionInstaller {
         let devPath = Bundle.main.bundleURL
             .deletingLastPathComponent()       // .build/
             .deletingLastPathComponent()       // CodeSquad/
+            .deletingLastPathComponent()       // <repo root>
             .appendingPathComponent("CodeSquadExtension").path
         if FileManager.default.fileExists(atPath: devPath) {
             return devPath

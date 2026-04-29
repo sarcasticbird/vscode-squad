@@ -4,6 +4,9 @@ import ApplicationServices
 @MainActor
 struct PanelContentView: View {
     @ObservedObject var state: CodeSquadState
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var panel: PanelColors { PanelColors(colorScheme) }
 
     var body: some View {
         Group {
@@ -13,6 +16,7 @@ struct PanelContentView: View {
                 rosterView
             }
         }
+        .preferredColorScheme(state.themeMode.colorScheme)
         .contextMenu {
             Button("Quit CodeSquad") {
                 NSApp.terminate(nil)
@@ -21,44 +25,72 @@ struct PanelContentView: View {
     }
 
     private var minimizedBar: some View {
-        HStack(spacing: 6) {
-            Text("CodeSquad")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.white.opacity(0.5))
-
-            if state.hasAttention {
-                Text("\(state.attentionCount)")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(.orange)
+        HStack(spacing: 4) {
+            ForEach(state.workspaces) { ws in
+                let status = state.claudeStatus[ws.name] ?? .inactive
+                HStack(spacing: 3) {
+                    Circle()
+                        .fill(dotColor(for: status))
+                        .frame(width: 6, height: 6)
+                    Text(shortName(ws.name))
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(panel.secondaryText)
+                }
+                .padding(.horizontal, 5)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(status == .needsAttention || status == .permissionNeeded
+                              ? Color.orange.opacity(0.15) : panel.cardDefault)
+                )
+                .onTapGesture { focusWorkspace(ws) }
             }
 
-            Spacer()
+            Spacer(minLength: 4)
 
             Image(systemName: "chevron.down")
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.5))
-                .frame(width: 24, height: 24)
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(panel.tertiaryText)
+                .frame(width: 18, height: 18)
                 .contentShape(Rectangle())
                 .onTapGesture { state.toggleMinimized() }
 
             Image(systemName: "xmark")
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.4))
-                .frame(width: 24, height: 24)
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(panel.tertiaryText)
+                .frame(width: 18, height: 18)
                 .contentShape(Rectangle())
                 .onTapGesture { NSApp.terminate(nil) }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(.black.opacity(0.85))
+                .fill(panel.background)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+                        .strokeBorder(panel.border, lineWidth: 1)
                 )
         )
+    }
+
+    private func dotColor(for status: ClaudeStatus) -> Color {
+        switch status {
+        case .working: return .green
+        case .permissionNeeded: return .purple
+        case .needsAttention: return .orange
+        case .idle: return .cyan.opacity(0.7)
+        case .inactive: return panel.inactiveDot
+        }
+    }
+
+    private func shortName(_ name: String) -> String {
+        let parts = name.split(whereSeparator: { $0 == "-" || $0 == "_" || $0 == " " || $0 == "." })
+        if parts.count >= 2 {
+            return String(parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
+        }
+        return String(name.prefix(2)).uppercased()
     }
 
     private var rosterView: some View {
@@ -66,27 +98,33 @@ struct PanelContentView: View {
             HStack {
                 Text("CodeSquad")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(panel.secondaryText)
 
                 Spacer()
 
+                Image(systemName: state.themeMode.icon)
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(panel.tertiaryText)
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+                    .onTapGesture { state.themeMode = state.themeMode.next() }
+
                 Image(systemName: "chevron.up")
                     .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(panel.tertiaryText)
                     .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
                     .onTapGesture { state.toggleMinimized() }
 
                 Image(systemName: "xmark")
                     .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(panel.tertiaryText)
                     .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
                     .onTapGesture { NSApp.terminate(nil) }
             }
             .padding(.horizontal, 12)
-            .padding(.top, 10)
-            .padding(.bottom, 6)
+            .padding(.vertical, 4)
 
             if !state.initialScanDone {
                 Spacer()
@@ -106,33 +144,58 @@ struct PanelContentView: View {
                 }
                 .padding(12)
             } else {
-                ScrollView {
-                    VStack(spacing: 4) {
-                        ForEach(state.workspaces) { workspace in
-                            WorkspaceCard(
-                                workspace: workspace,
-                                claudeStatus: state.claudeStatus[workspace.name] ?? .inactive,
-                                sessions: state.claudeSessions[workspace.name] ?? [],
-                                onTap: { focusWorkspace(workspace) }
-                            )
-                        }
-
-                        if state.workspaces.isEmpty {
-                            Text("No VS Code windows detected")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.white.opacity(0.4))
-                                .padding(12)
+                GeometryReader { geo in
+                    let useGrid = geo.size.width >= 480
+                    ScrollView {
+                        if useGrid {
+                            LazyVGrid(columns: gridColumns(for: geo.size.width), spacing: 4) {
+                                workspaceCards
+                            }
+                            .padding(.horizontal, 8)
+                        } else {
+                            VStack(spacing: 4) {
+                                workspaceCards
+                            }
+                            .padding(.horizontal, 8)
                         }
                     }
-                    .padding(.horizontal, 8)
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(.black.opacity(0.85))
+                .fill(panel.background)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(panel.border, lineWidth: 1)
+                )
         )
+    }
+
+    @ViewBuilder
+    private var workspaceCards: some View {
+        ForEach(state.workspaces) { workspace in
+            WorkspaceCard(
+                workspace: workspace,
+                claudeStatus: state.claudeStatus[workspace.name] ?? .inactive,
+                sessions: state.claudeSessions[workspace.name] ?? [],
+                onTap: { focusWorkspace(workspace) }
+            )
+        }
+
+        if state.workspaces.isEmpty {
+            Text("No VS Code windows detected")
+                .font(.system(size: 11))
+                .foregroundStyle(panel.tertiaryText)
+                .padding(12)
+        }
+    }
+
+    private func gridColumns(for width: CGFloat) -> [GridItem] {
+        let minCardWidth: CGFloat = 220
+        let count = max(2, Int(width / minCardWidth))
+        return Array(repeating: GridItem(.flexible(), spacing: 4), count: count)
     }
 
     private func focusWorkspace(_ workspace: Workspace) {
@@ -144,7 +207,49 @@ struct PanelContentView: View {
             app.activate()
         }
 
-        state.clearAllAlerts(for: workspace.name)
+        state.clearStatusAndCollapse(for: workspace.name)
+    }
+}
+
+struct PanelColors {
+    let colorScheme: ColorScheme
+
+    init(_ colorScheme: ColorScheme) {
+        self.colorScheme = colorScheme
+    }
+
+    var isDark: Bool { colorScheme == .dark }
+
+    var background: Color {
+        isDark ? .black.opacity(0.85) : .white.opacity(0.92)
+    }
+
+    var border: Color {
+        isDark ? .white.opacity(0.15) : .black.opacity(0.12)
+    }
+
+    var primaryText: Color {
+        isDark ? .white : .black
+    }
+
+    var secondaryText: Color {
+        isDark ? .white.opacity(0.5) : .black.opacity(0.5)
+    }
+
+    var tertiaryText: Color {
+        isDark ? .white.opacity(0.4) : .black.opacity(0.35)
+    }
+
+    var cardHover: Color {
+        isDark ? .white.opacity(0.08) : .black.opacity(0.06)
+    }
+
+    var cardDefault: Color {
+        isDark ? .white.opacity(0.04) : .black.opacity(0.03)
+    }
+
+    var inactiveDot: Color {
+        isDark ? .white.opacity(0.15) : .black.opacity(0.12)
     }
 }
 
@@ -156,6 +261,9 @@ struct WorkspaceCard: View {
     let onTap: @MainActor () -> Void
 
     @State private var isHovered = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var panel: PanelColors { PanelColors(colorScheme) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -165,13 +273,13 @@ struct WorkspaceCard: View {
 
                 Text(workspace.name)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(panel.primaryText)
                     .lineLimit(1)
 
                 if sessions.count > 1 {
                     Text("×\(sessions.count)")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(panel.tertiaryText)
                 }
 
                 Spacer()
@@ -189,7 +297,7 @@ struct WorkspaceCard: View {
 
             Text(workspace.title)
                 .font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.4))
+                .foregroundStyle(panel.tertiaryText)
                 .lineLimit(1)
                 .padding(.leading, 14)
 
@@ -225,7 +333,7 @@ struct WorkspaceCard: View {
         case .idle:
             Circle().fill(.cyan.opacity(0.7))
         case .inactive:
-            Circle().fill(.white.opacity(0.15))
+            Circle().fill(panel.inactiveDot)
         }
     }
 
@@ -235,16 +343,8 @@ struct WorkspaceCard: View {
         case .permissionNeeded: return .purple.opacity(0.7)
         case .needsAttention: return .orange.opacity(0.7)
         case .idle: return .cyan.opacity(0.6)
-        case .inactive: return .white.opacity(0.3)
+        case .inactive: return panel.tertiaryText
         }
-    }
-
-    private func sessionLabel(_ session: ClaudeSession) -> String {
-        let icon = session.source == "VS Code" ? "VS Code" : "CLI"
-        if let title = session.chatTitle, !title.isEmpty {
-            return "\(icon): \(title)"
-        }
-        return icon
     }
 
     private var cardBackground: Color {
@@ -253,9 +353,9 @@ struct WorkspaceCard: View {
         } else if claudeStatus == .needsAttention {
             return .orange.opacity(0.15)
         } else if isHovered {
-            return .white.opacity(0.08)
+            return panel.cardHover
         } else {
-            return .white.opacity(0.04)
+            return panel.cardDefault
         }
     }
 }
