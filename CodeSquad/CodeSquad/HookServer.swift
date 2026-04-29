@@ -21,12 +21,24 @@ struct HookPayload: Decodable, Sendable {
     }
 }
 
+struct RemoteSessionPayload: Decodable, Sendable {
+    let pid: String
+    let cwd: String
+    let status: String?
+    let sessionId: String?
+    let source: String
+    let chatTitle: String?
+}
+
 struct WorkspaceRegistration: Decodable, Sendable {
     let windowId: String
     let workspaceName: String
     let folderPaths: [String]
     let workspaceFile: String?
     let claudeInstalled: Bool
+    let claudeActive: Bool?
+    let remoteAuthority: String?
+    let remoteSessions: [RemoteSessionPayload]?
 }
 
 struct WorkspaceEvent: Decodable, Sendable {
@@ -245,9 +257,48 @@ final class HookServer {
 
     @MainActor
     private func handleWorkspaceRegister(_ reg: WorkspaceRegistration) {
-        logger.debug("Extension registered: \(reg.workspaceName, privacy: .public) folders=\(reg.folderPaths.joined(separator: ", "), privacy: .public)")
+        let authority = reg.remoteAuthority
+        logger.debug("Extension registered: \(reg.workspaceName, privacy: .public) folders=\(reg.folderPaths.joined(separator: ", "), privacy: .public) authority=\(authority ?? "local", privacy: .public)")
         windowToWorkspace[reg.windowId] = reg.workspaceName
-        state.registerWorkspace(name: reg.workspaceName, folderPaths: reg.folderPaths, workspaceFile: reg.workspaceFile)
+        state.registerWorkspace(name: reg.workspaceName, folderPaths: reg.folderPaths, workspaceFile: reg.workspaceFile, remoteAuthority: authority)
+
+        if authority != nil {
+            if let remote = reg.remoteSessions, !remote.isEmpty {
+                let sessions = remote.map { rs in
+                    ClaudeSession(
+                        id: "remote-\(rs.pid)",
+                        pid: 0,
+                        cwd: rs.cwd,
+                        source: rs.source,
+                        sessionId: rs.sessionId,
+                        chatTitle: rs.chatTitle,
+                        metaStatus: rs.status
+                    )
+                }
+                state.claudeProcessFound(workspace: reg.workspaceName, sessions: sessions)
+
+                let anyBusy = sessions.contains(where: { $0.metaStatus == "busy" })
+                let anyPermission = sessions.contains(where: { $0.metaStatus == "permission" })
+                let anyComplete = sessions.contains(where: { $0.metaStatus == "complete" })
+                let current = state.claudeStatus[reg.workspaceName]
+
+                if anyBusy {
+                    if current != .needsAttention && current != .permissionNeeded {
+                        state.claudeStatus[reg.workspaceName] = .working
+                    }
+                } else if anyPermission {
+                    state.claudeStatus[reg.workspaceName] = .permissionNeeded
+                } else if current == .working || anyComplete {
+                    state.claudeStatus[reg.workspaceName] = .needsAttention
+                }
+            } else if reg.claudeActive == true {
+                state.remoteClaudeDetected(workspace: reg.workspaceName)
+                state.claudeSessions.removeValue(forKey: reg.workspaceName)
+            } else {
+                state.remoteClaudeGone(workspace: reg.workspaceName)
+                state.claudeSessions.removeValue(forKey: reg.workspaceName)
+            }
+        }
     }
 
     @MainActor

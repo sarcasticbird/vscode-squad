@@ -63,7 +63,7 @@ final class ClaudeProcessScanner {
             if let sessions = matched[workspace.name] {
                 state.claudeProcessFound(workspace: workspace.name, sessions: sessions)
                 applyMetaStatus(workspace: workspace.name, sessions: sessions)
-            } else {
+            } else if !state.remoteWorkspaces.contains(workspace.name) {
                 state.claudeProcessGone(workspace: workspace.name)
             }
         }
