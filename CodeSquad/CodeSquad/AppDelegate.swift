@@ -7,7 +7,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let logger = Logger(subsystem: "com.codesquad.app", category: "App")
     private var panelController: PanelController?
     private var hookServer: HookServer?
-    private var windowDiscovery: WindowDiscovery?
     private var claudeScanner: ClaudeProcessScanner?
     private var themeCancellable: AnyCancellable?
 
@@ -20,7 +19,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             state.themeMode = mode
         }
 
-        logger.info("AX trusted: \(AXIsProcessTrusted())")
 
         if HookInstaller.checkInstalled() {
             logger.info("Hooks already installed")
@@ -44,11 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        windowDiscovery = WindowDiscovery(state: state)
-        windowDiscovery?.start()
-
         hookServer = HookServer(state: state)
-        hookServer?.windowDiscovery = windowDiscovery
         hookServer?.start()
 
         claudeScanner = ClaudeProcessScanner(state: state)
@@ -73,7 +67,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        windowDiscovery?.stop()
         hookServer?.stop()
         claudeScanner?.stop()
         panelController?.hide()

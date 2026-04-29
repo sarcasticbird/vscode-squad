@@ -8,12 +8,14 @@ interface WorkspacePayload {
   windowId: string;
   workspaceName: string;
   folderPaths: string[];
+  workspaceFile: string | null;
   claudeInstalled: boolean;
   claudeActive: boolean;
 }
 
 let registered = false;
 let outputChannel: vscode.OutputChannel;
+let heartbeat: ReturnType<typeof setInterval> | undefined;
 
 function getWindowId(): string {
   return vscode.env.sessionId;
@@ -29,11 +31,15 @@ function buildPayload(): WorkspacePayload {
   );
   const claudeExt = vscode.extensions.getExtension("anthropic.claude-code");
 
+  const wsFile = vscode.workspace.workspaceFile;
+  const workspaceFile = wsFile?.scheme === "file" ? wsFile.fsPath : null;
+
   return {
     windowId: getWindowId(),
     workspaceName:
       vscode.workspace.name ?? folders[0]?.split("/").pop() ?? "Unknown",
     folderPaths: folders,
+    workspaceFile,
     claudeInstalled: claudeExt !== undefined,
     claudeActive: claudeExt?.isActive ?? false,
   };
@@ -104,22 +110,18 @@ export function activate(context: vscode.ExtensionContext): void {
 
   register();
 
+  heartbeat = setInterval(() => register(), 10_000);
+
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => register()),
 
     vscode.window.onDidChangeWindowState((e) => {
       if (e.focused) {
-        if (!registered) {
-          register().then(() => {
-            if (registered) {
-              post("/workspace/focus", { windowId: getWindowId() });
-            }
-          });
-        } else {
-          post("/workspace/focus", { windowId: getWindowId() });
-        }
+        register();
       }
-    })
+    }),
+
+    { dispose: () => { if (heartbeat) clearInterval(heartbeat); } }
   );
 }
 

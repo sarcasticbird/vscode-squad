@@ -1,6 +1,5 @@
 import Foundation
 import Combine
-import ApplicationServices
 import SwiftUI
 
 enum ClaudeStatus: Equatable {
@@ -47,11 +46,9 @@ final class CodeSquadState: ObservableObject {
     @Published var claudeStatus: [String: ClaudeStatus] = [:]
     @Published var claudeSessions: [String: [ClaudeSession]] = [:]
     @Published var panelMinimized: Bool = false
-    @Published var axTrusted: Bool = AXIsProcessTrusted()
-    @Published var initialScanDone: Bool = false
+    @Published var initialScanDone: Bool = true
     @Published var themeMode: ThemeMode = .system
 
-    var extensionFolders: [String: [String]] = [:]
 
     var attentionCount: Int {
         claudeStatus.values.filter { $0 == .needsAttention || $0 == .permissionNeeded }.count
@@ -86,20 +83,17 @@ final class CodeSquadState: ObservableObject {
 
     func claudePermissionNeeded(workspace: String) {
         claudeStatus[workspace] = .permissionNeeded
-        panelMinimized = false
     }
 
     func claudeNeedsAttention(workspace: String) {
         if claudeStatus[workspace] == .permissionNeeded { return }
         claudeStatus[workspace] = .needsAttention
-        panelMinimized = false
     }
 
     func claudeFinished(workspace: String) {
         let current = claudeStatus[workspace]
         if current == .working || current == .permissionNeeded {
             claudeStatus[workspace] = .needsAttention
-            panelMinimized = false
         }
     }
 
@@ -110,22 +104,19 @@ final class CodeSquadState: ObservableObject {
         }
     }
 
-    func registerExtensionWorkspace(name: String, folderPaths: [String]) {
-        extensionFolders[name] = folderPaths
+    func registerWorkspace(name: String, folderPaths: [String], workspaceFile: String? = nil) {
         if let idx = workspaces.firstIndex(where: { $0.name == name }) {
             workspaces[idx].folderPaths = folderPaths
+            workspaces[idx].workspaceFile = workspaceFile
+        } else {
+            workspaces.append(Workspace(name: name, folderPaths: folderPaths, workspaceFile: workspaceFile))
+            workspaces.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         }
     }
 
-    func deregisterExtensionWorkspace(name: String) {
-        extensionFolders.removeValue(forKey: name)
-    }
-
-    func toggleMinimized() {
-        panelMinimized.toggle()
-    }
-
-    func refreshAXStatus() {
-        axTrusted = AXIsProcessTrusted()
+    func deregisterWorkspace(name: String) {
+        workspaces.removeAll { $0.name == name }
+        claudeStatus.removeValue(forKey: name)
+        claudeSessions.removeValue(forKey: name)
     }
 }

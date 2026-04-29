@@ -25,6 +25,7 @@ struct WorkspaceRegistration: Decodable, Sendable {
     let windowId: String
     let workspaceName: String
     let folderPaths: [String]
+    let workspaceFile: String?
     let claudeInstalled: Bool
 }
 
@@ -39,7 +40,7 @@ final class HookServer {
     private var listener: NWListener?
     private let state: CodeSquadState
     private let logger = Logger(subsystem: "com.codesquad.app", category: "HookServer")
-    weak var windowDiscovery: WindowDiscovery?
+    private var windowToWorkspace: [String: String] = [:]
 
     init(port: UInt16 = 9876, state: CodeSquadState) {
         self.port = port
@@ -217,19 +218,9 @@ final class HookServer {
     }
 
     @MainActor
-    private func routePayload(_ payload: HookPayload, path: String, isRetry: Bool = false) {
-        let workspace = state.workspaces.first(where: { $0.matchesCWD(payload.cwd) })
-
-        guard let workspace else {
-            if !isRetry, let discovery = windowDiscovery {
-                logger.info("No workspace match for cwd: \(payload.cwd, privacy: .public) — refreshing and retrying")
-                discovery.refresh()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                    self?.routePayload(payload, path: path, isRetry: true)
-                }
-            } else {
-                logger.warning("No workspace match for cwd: \(payload.cwd, privacy: .public) (after retry)")
-            }
+    private func routePayload(_ payload: HookPayload, path: String) {
+        guard let workspace = state.workspaces.first(where: { $0.matchesCWD(payload.cwd) }) else {
+            logger.warning("No workspace match for cwd: \(payload.cwd, privacy: .public)")
             return
         }
 
@@ -255,12 +246,18 @@ final class HookServer {
     @MainActor
     private func handleWorkspaceRegister(_ reg: WorkspaceRegistration) {
         logger.debug("Extension registered: \(reg.workspaceName, privacy: .public) folders=\(reg.folderPaths.joined(separator: ", "), privacy: .public)")
-        state.registerExtensionWorkspace(name: reg.workspaceName, folderPaths: reg.folderPaths)
+        windowToWorkspace[reg.windowId] = reg.workspaceName
+        state.registerWorkspace(name: reg.workspaceName, folderPaths: reg.folderPaths, workspaceFile: reg.workspaceFile)
     }
 
     @MainActor
     private func handleWorkspaceDeregister(_ evt: WorkspaceEvent) {
-        logger.debug("Extension deregistered: windowId=\(evt.windowId, privacy: .public)")
+        guard let name = windowToWorkspace.removeValue(forKey: evt.windowId) else {
+            logger.debug("Extension deregistered unknown windowId=\(evt.windowId, privacy: .public)")
+            return
+        }
+        logger.debug("Extension deregistered: \(name, privacy: .public)")
+        state.deregisterWorkspace(name: name)
     }
 
     @MainActor

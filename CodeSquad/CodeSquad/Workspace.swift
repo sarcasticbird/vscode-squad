@@ -1,55 +1,16 @@
-import ApplicationServices
+import Foundation
 
 struct Workspace: Identifiable {
     let id: String
     let name: String
-    let title: String
-    let pid: pid_t
-    let windowElement: AXUIElement?
     var folderPaths: [String] = []
+    var workspaceFile: String?
 
-    init(name: String, title: String, pid: pid_t, windowElement: AXUIElement?) {
-        self.id = "\(pid)-\(name)"
+    init(name: String, folderPaths: [String] = [], workspaceFile: String? = nil) {
+        self.id = name
         self.name = name
-        self.title = Self.cleanTitle(title, workspaceName: name)
-        self.pid = pid
-        self.windowElement = windowElement
-    }
-
-    private static func cleanTitle(_ title: String, workspaceName: String) -> String {
-        var cleaned = title
-
-        let suffixes = [
-            " — Visual Studio Code",
-            " – Visual Studio Code",
-            " — Code - Insiders",
-            " – Code - Insiders",
-            " — Cursor",
-            " – Cursor",
-        ]
-        for suffix in suffixes {
-            if cleaned.hasSuffix(suffix) {
-                cleaned = String(cleaned.dropLast(suffix.count))
-                break
-            }
-        }
-
-        // Strip " — WorkspaceName (Workspace)" or " — WorkspaceName" from the end
-        for sep in [" — ", " – "] {
-            if let range = cleaned.range(of: sep, options: .backwards) {
-                let after = String(cleaned[range.upperBound...]).trimmingCharacters(in: .whitespaces)
-                var afterBase = after
-                if let p = afterBase.range(of: " (", options: .backwards), afterBase.hasSuffix(")") {
-                    afterBase = String(afterBase[..<p.lowerBound])
-                }
-                if afterBase.lowercased() == workspaceName.lowercased() {
-                    cleaned = String(cleaned[..<range.lowerBound])
-                    break
-                }
-            }
-        }
-
-        return cleaned.trimmingCharacters(in: .whitespaces)
+        self.folderPaths = folderPaths
+        self.workspaceFile = workspaceFile
     }
 
     static func parseWorkspaceName(from title: String) -> String {
@@ -79,7 +40,6 @@ struct Workspace: Identifiable {
 
         cleaned = cleaned.trimmingCharacters(in: .whitespaces)
 
-        // Strip VS Code decorations like " (Workspace)", " [SSH: host]"
         if let parenRange = cleaned.range(of: " (", options: .backwards) {
             if cleaned.hasSuffix(")") {
                 cleaned = String(cleaned[..<parenRange.lowerBound])

@@ -1,5 +1,4 @@
 import SwiftUI
-import ApplicationServices
 
 @MainActor
 struct PanelContentView: View {
@@ -32,9 +31,12 @@ struct PanelContentView: View {
                     Circle()
                         .fill(dotColor(for: status))
                         .frame(width: 6, height: 6)
-                    Text(shortName(ws.name))
+                    Text(ws.name)
                         .font(.system(size: 9, weight: .semibold, design: .rounded))
                         .foregroundStyle(panel.secondaryText)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(minWidth: 14, alignment: .leading)
                 }
                 .padding(.horizontal, 5)
                 .padding(.vertical, 3)
@@ -47,24 +49,9 @@ struct PanelContentView: View {
             }
 
             Spacer(minLength: 4)
-
-            Image(systemName: "chevron.down")
-                .font(.system(size: 8, weight: .semibold))
-                .foregroundStyle(panel.tertiaryText)
-                .frame(width: 18, height: 18)
-                .contentShape(Rectangle())
-                .onTapGesture { state.toggleMinimized() }
-
-            Image(systemName: "xmark")
-                .font(.system(size: 8, weight: .semibold))
-                .foregroundStyle(panel.tertiaryText)
-                .frame(width: 18, height: 18)
-                .contentShape(Rectangle())
-                .onTapGesture { NSApp.terminate(nil) }
         }
         .padding(.horizontal, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(panel.background)
@@ -73,6 +60,8 @@ struct PanelContentView: View {
                         .strokeBorder(panel.border, lineWidth: 1)
                 )
         )
+        .contentShape(Rectangle())
+        .highPriorityGesture(TapGesture(count: 2).onEnded { state.panelMinimized = false })
     }
 
     private func dotColor(for status: ClaudeStatus) -> Color {
@@ -85,13 +74,6 @@ struct PanelContentView: View {
         }
     }
 
-    private func shortName(_ name: String) -> String {
-        let parts = name.split(whereSeparator: { $0 == "-" || $0 == "_" || $0 == " " || $0 == "." })
-        if parts.count >= 2 {
-            return String(parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
-        }
-        return String(name.prefix(2)).uppercased()
-    }
 
     private var rosterView: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -102,47 +84,37 @@ struct PanelContentView: View {
 
                 Spacer()
 
-                Image(systemName: state.themeMode.icon)
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(panel.tertiaryText)
-                    .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
-                    .onTapGesture { state.themeMode = state.themeMode.next() }
+                HStack(spacing: 2) {
+                    Image(systemName: state.themeMode.icon)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(panel.tertiaryText)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                        .onTapGesture { state.themeMode = state.themeMode.next() }
 
-                Image(systemName: "chevron.up")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(panel.tertiaryText)
-                    .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
-                    .onTapGesture { state.toggleMinimized() }
-
-                Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(panel.tertiaryText)
-                    .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
-                    .onTapGesture { NSApp.terminate(nil) }
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(panel.tertiaryText)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                        .onTapGesture { NSApp.terminate(nil) }
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 4)
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) { state.panelMinimized = true }
 
-            if !state.initialScanDone {
-                Spacer()
-            } else if !state.axTrusted {
+            if state.workspaces.isEmpty {
                 VStack(spacing: 6) {
-                    Text("Accessibility permission needed")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.orange)
-                    Text("Open System Settings")
+                    Text("Waiting for VS Code…")
                         .font(.system(size: 11))
-                        .foregroundStyle(.blue)
-                        .onTapGesture {
-                            NSWorkspace.shared.open(
-                                URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-                            )
-                        }
+                        .foregroundStyle(panel.tertiaryText)
+                    Text("If VS Code is already open, reload the window")
+                        .font(.system(size: 9))
+                        .foregroundStyle(panel.tertiaryText.opacity(0.7))
                 }
-                .padding(12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 GeometryReader { geo in
                     let useGrid = geo.size.width >= 480
@@ -199,14 +171,12 @@ struct PanelContentView: View {
     }
 
     private func focusWorkspace(_ workspace: Workspace) {
-        if let element = workspace.windowElement {
-            AXUIElementPerformAction(element, kAXRaiseAction as CFString)
+        let target = workspace.workspaceFile ?? workspace.folderPaths.first
+        if let path = target,
+           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode") {
+            let config = NSWorkspace.OpenConfiguration()
+            NSWorkspace.shared.open([URL(fileURLWithPath: path)], withApplicationAt: appURL, configuration: config)
         }
-
-        if let app = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == workspace.pid }) {
-            app.activate()
-        }
-
         state.clearStatusAndCollapse(for: workspace.name)
     }
 }
@@ -295,10 +265,11 @@ struct WorkspaceCard: View {
                 }
             }
 
-            Text(workspace.title)
+            Text(workspace.folderPaths.first ?? workspace.name)
                 .font(.system(size: 10))
                 .foregroundStyle(panel.tertiaryText)
                 .lineLimit(1)
+                .truncationMode(.middle)
                 .padding(.leading, 14)
 
             if !sessions.isEmpty {
