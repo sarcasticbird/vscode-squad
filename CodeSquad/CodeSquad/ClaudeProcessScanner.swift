@@ -71,9 +71,6 @@ final class ClaudeProcessScanner {
 
 
     private func applyMetaStatus(workspace: String, sessions: [ClaudeSession]) {
-        let current = state.claudeStatus[workspace]
-        if current == .needsAttention || current == .working { return }
-
         if sessions.contains(where: { $0.metaStatus == "busy" }) {
             state.claudeStatus[workspace] = .working
         }
