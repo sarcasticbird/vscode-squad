@@ -16,6 +16,7 @@ struct PanelContentView: View {
                 rosterView
             }
         }
+        .preferredColorScheme(state.themeMode.colorScheme)
         .contextMenu {
             Button("Quit CodeSquad") {
                 NSApp.terminate(nil)
@@ -100,6 +101,13 @@ struct PanelContentView: View {
                     .foregroundStyle(panel.secondaryText)
 
                 Spacer()
+
+                Image(systemName: state.themeMode.icon)
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(panel.tertiaryText)
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+                    .onTapGesture { state.themeMode = state.themeMode.next() }
 
                 Image(systemName: "chevron.up")
                     .font(.system(size: 9, weight: .semibold))

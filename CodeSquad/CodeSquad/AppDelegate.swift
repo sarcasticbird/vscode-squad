@@ -1,4 +1,5 @@
 import Cocoa
+import Combine
 import OSLog
 
 @MainActor
@@ -8,11 +9,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hookServer: HookServer?
     private var windowDiscovery: WindowDiscovery?
     private var claudeScanner: ClaudeProcessScanner?
+    private var themeCancellable: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
         let state = CodeSquadState.shared
+        let persisted = StatePersistence.load()
+        if let raw = persisted.themeMode, let mode = ThemeMode(rawValue: raw) {
+            state.themeMode = mode
+        }
 
         logger.info("AX trusted: \(AXIsProcessTrusted())")
 
@@ -50,6 +56,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         panelController = PanelController(state: state)
         panelController?.show()
+
+        themeCancellable = state.$themeMode
+            .dropFirst()
+            .sink { mode in
+                var ps = StatePersistence.load()
+                ps.themeMode = mode.rawValue
+                try? StatePersistence.save(ps)
+            }
 
         logger.info("CodeSquad M0 running")
     }
