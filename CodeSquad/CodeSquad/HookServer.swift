@@ -257,7 +257,9 @@ final class HookServer {
             return
         }
         logger.debug("Extension deregistered: \(name, privacy: .public)")
-        state.deregisterWorkspace(name: name)
+        if !windowToWorkspace.values.contains(name) {
+            state.deregisterWorkspace(name: name)
+        }
     }
 
     @MainActor

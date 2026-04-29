@@ -46,7 +46,6 @@ final class CodeSquadState: ObservableObject {
     @Published var claudeStatus: [String: ClaudeStatus] = [:]
     @Published var claudeSessions: [String: [ClaudeSession]] = [:]
     @Published var panelMinimized: Bool = false
-    @Published var initialScanDone: Bool = true
     @Published var themeMode: ThemeMode = .system
 
 

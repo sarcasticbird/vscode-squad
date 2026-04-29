@@ -20,6 +20,7 @@ final class PanelController {
     private let edgeMargin: CGFloat = 8
     private var expandedHeight: CGFloat?
     private var isAnimating: Bool = false
+    private var spaceChangeObserver: NSObjectProtocol?
 
     init(state: CodeSquadState) {
         self.state = state
@@ -56,6 +57,10 @@ final class PanelController {
     }
 
     func hide() {
+        if let observer = spaceChangeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+            spaceChangeObserver = nil
+        }
         panel?.orderOut(nil)
         panel = nil
         cancellables.removeAll()
@@ -71,7 +76,7 @@ final class PanelController {
     }
 
     private func observeSpaceChange(_ panel: NSPanel) {
-        NSWorkspace.shared.notificationCenter.addObserver(
+        spaceChangeObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil, queue: .main
         ) { [weak self] _ in

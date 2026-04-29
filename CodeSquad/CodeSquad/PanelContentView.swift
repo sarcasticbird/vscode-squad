@@ -170,12 +170,24 @@ struct PanelContentView: View {
         return Array(repeating: GridItem(.flexible(), spacing: 4), count: count)
     }
 
+    private static let editorBundleIDs = [
+        "com.microsoft.VSCode",
+        "com.microsoft.VSCodeInsiders",
+        "com.todesktop.230313mzl4w4u92",
+    ]
+
     private func focusWorkspace(_ workspace: Workspace) {
         let target = workspace.workspaceFile ?? workspace.folderPaths.first
-        if let path = target,
-           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode") {
-            let config = NSWorkspace.OpenConfiguration()
-            NSWorkspace.shared.open([URL(fileURLWithPath: path)], withApplicationAt: appURL, configuration: config)
+        if let path = target {
+            let url = URL(fileURLWithPath: path)
+            let appURL = Self.editorBundleIDs.lazy
+                .compactMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
+                .first
+            if let appURL {
+                NSWorkspace.shared.open([url], withApplicationAt: appURL, configuration: NSWorkspace.OpenConfiguration())
+            } else {
+                NSWorkspace.shared.open(url)
+            }
         }
         state.clearStatusAndCollapse(for: workspace.name)
     }
