@@ -17,7 +17,8 @@ final class PanelController {
     private let panelMaxWidth: CGFloat = 2400
     private let minimizedHeight: CGFloat = 26
     private let edgeMargin: CGFloat = 8
-    private var userResized: Bool = false
+    private var expandedHeight: CGFloat?
+    private var isAnimating: Bool = false
 
     init(state: CodeSquadState) {
         self.state = state
@@ -62,7 +63,6 @@ final class PanelController {
         state.$panelMinimized
             .removeDuplicates()
             .sink { [weak self] minimized in
-                self?.userResized = false
                 self?.updatePanelSize(minimized: minimized)
             }
             .store(in: &cancellables)
@@ -74,7 +74,9 @@ final class PanelController {
             object: panel, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                self?.userResized = true
+                guard let self, !self.isAnimating, !self.state.panelMinimized,
+                      let panel = self.panel else { return }
+                self.expandedHeight = panel.frame.height
             }
         }
     }
@@ -89,21 +91,29 @@ final class PanelController {
         let currentWidth = currentFrame.width
         let newFrame: NSRect
         if minimized {
+            if expandedHeight == nil {
+                expandedHeight = currentFrame.height
+            }
             let y = currentFrame.maxY - minimizedHeight
             newFrame = NSRect(x: currentFrame.origin.x, y: y, width: currentWidth, height: minimizedHeight)
         } else {
-            let contentHeight = rosterContentHeight()
-            let rosterHeight = max(minimizedHeight, contentHeight)
+            let restored = expandedHeight ?? rosterContentHeight()
+            let rosterHeight = max(minimizedHeight, restored)
             let clampedHeight = min(rosterHeight, screenFrame.height - 40)
             let y = currentFrame.maxY - clampedHeight
             newFrame = NSRect(x: currentFrame.origin.x, y: y, width: currentWidth, height: clampedHeight)
         }
 
-        NSAnimationContext.runAnimationGroup { ctx in
+        isAnimating = true
+        NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.2
             ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             panel.animator().setFrame(newFrame, display: true)
-        }
+        }, completionHandler: { [weak self] in
+            Task { @MainActor in
+                self?.isAnimating = false
+            }
+        })
     }
 
     private func rosterContentHeight() -> CGFloat {
