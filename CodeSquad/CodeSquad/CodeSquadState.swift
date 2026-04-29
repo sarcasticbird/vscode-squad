@@ -41,7 +41,10 @@ final class CodeSquadState: ObservableObject {
 
     func claudeProcessGone(workspace: String) {
         claudeSessions.removeValue(forKey: workspace)
-        claudeStatus[workspace] = .inactive
+        let current = claudeStatus[workspace]
+        if current != .needsAttention && current != .permissionNeeded {
+            claudeStatus[workspace] = .inactive
+        }
     }
 
     func claudeWorking(workspace: String) {
@@ -57,6 +60,7 @@ final class CodeSquadState: ObservableObject {
     }
 
     func claudeNeedsAttention(workspace: String) {
+        if claudeStatus[workspace] == .permissionNeeded { return }
         claudeStatus[workspace] = .needsAttention
         panelMinimized = false
     }
@@ -69,13 +73,7 @@ final class CodeSquadState: ObservableObject {
         }
     }
 
-    func clearAttention(for workspace: String) {
-        if claudeStatus[workspace] == .needsAttention {
-            claudeStatus[workspace] = .idle
-        }
-    }
-
-    func clearAllAlerts(for workspace: String) {
+    func clearStatusAndCollapse(for workspace: String) {
         let current = claudeStatus[workspace]
         if current == .needsAttention || current == .permissionNeeded {
             claudeStatus[workspace] = .idle

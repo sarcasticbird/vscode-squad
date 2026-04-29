@@ -199,7 +199,7 @@ struct PanelContentView: View {
             app.activate()
         }
 
-        state.clearAllAlerts(for: workspace.name)
+        state.clearStatusAndCollapse(for: workspace.name)
     }
 }
 
