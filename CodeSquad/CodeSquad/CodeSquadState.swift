@@ -48,6 +48,7 @@ final class CodeSquadState: ObservableObject {
     @Published var panelMinimized: Bool = false
     @Published var themeMode: ThemeMode = .system
 
+    var remoteWorkspaces: Set<String> = []
 
     var attentionCount: Int {
         claudeStatus.values.filter { $0 == .needsAttention || $0 == .permissionNeeded }.count
@@ -103,12 +104,18 @@ final class CodeSquadState: ObservableObject {
         }
     }
 
-    func registerWorkspace(name: String, folderPaths: [String], workspaceFile: String? = nil) {
+    func registerWorkspace(name: String, folderPaths: [String], workspaceFile: String? = nil, remoteAuthority: String? = nil) {
+        if remoteAuthority != nil {
+            remoteWorkspaces.insert(name)
+        } else {
+            remoteWorkspaces.remove(name)
+        }
         if let idx = workspaces.firstIndex(where: { $0.name == name }) {
             workspaces[idx].folderPaths = folderPaths
             workspaces[idx].workspaceFile = workspaceFile
+            workspaces[idx].remoteAuthority = remoteAuthority
         } else {
-            workspaces.append(Workspace(name: name, folderPaths: folderPaths, workspaceFile: workspaceFile))
+            workspaces.append(Workspace(name: name, folderPaths: folderPaths, workspaceFile: workspaceFile, remoteAuthority: remoteAuthority))
             workspaces.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         }
     }
@@ -117,5 +124,20 @@ final class CodeSquadState: ObservableObject {
         workspaces.removeAll { $0.name == name }
         claudeStatus.removeValue(forKey: name)
         claudeSessions.removeValue(forKey: name)
+        remoteWorkspaces.remove(name)
+    }
+
+    func remoteClaudeDetected(workspace: String) {
+        let current = claudeStatus[workspace]
+        if current == nil || current == .inactive {
+            claudeStatus[workspace] = .idle
+        }
+    }
+
+    func remoteClaudeGone(workspace: String) {
+        let current = claudeStatus[workspace]
+        if current == .idle {
+            claudeStatus[workspace] = .inactive
+        }
     }
 }

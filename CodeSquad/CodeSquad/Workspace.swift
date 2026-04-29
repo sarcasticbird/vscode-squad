@@ -5,13 +5,17 @@ struct Workspace: Identifiable {
     let name: String
     var folderPaths: [String] = []
     var workspaceFile: String?
+    var remoteAuthority: String?
 
-    init(name: String, folderPaths: [String] = [], workspaceFile: String? = nil) {
+    init(name: String, folderPaths: [String] = [], workspaceFile: String? = nil, remoteAuthority: String? = nil) {
         self.id = name
         self.name = name
         self.folderPaths = folderPaths
         self.workspaceFile = workspaceFile
+        self.remoteAuthority = remoteAuthority
     }
+
+    var isRemote: Bool { remoteAuthority != nil }
 
     static func parseWorkspaceName(from title: String) -> String {
         var cleaned = title

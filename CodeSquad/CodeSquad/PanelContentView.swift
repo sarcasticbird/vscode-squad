@@ -178,7 +178,16 @@ struct PanelContentView: View {
 
     private func focusWorkspace(_ workspace: Workspace) {
         let target = workspace.workspaceFile ?? workspace.folderPaths.first
-        if let path = target {
+        guard let path = target else {
+            state.clearStatusAndCollapse(for: workspace.name)
+            return
+        }
+
+        if let authority = workspace.remoteAuthority {
+            if let url = URL(string: "vscode://vscode-remote/\(authority)\(path)") {
+                NSWorkspace.shared.open(url)
+            }
+        } else {
             let url = URL(fileURLWithPath: path)
             let appURL = Self.editorBundleIDs.lazy
                 .compactMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
