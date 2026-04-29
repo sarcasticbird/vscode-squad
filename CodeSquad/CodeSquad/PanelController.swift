@@ -16,9 +16,11 @@ final class PanelController {
     private let panelMinWidth: CGFloat = 260
     private let panelMaxWidth: CGFloat = 2400
     private let minimizedHeight: CGFloat = 26
+    private let snapThreshold: CGFloat = 60
     private let edgeMargin: CGFloat = 8
     private var expandedHeight: CGFloat?
     private var isAnimating: Bool = false
+    private var spaceChangeObserver: NSObjectProtocol?
 
     init(state: CodeSquadState) {
         self.state = state
@@ -35,14 +37,14 @@ final class PanelController {
         let panel = ClickablePanel(contentRect: frame, styleMask: styleMask, backing: .buffered, defer: false)
 
         panel.level = .floating
-        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
         panel.isMovableByWindowBackground = true
-        panel.minSize = NSSize(width: panelMinWidth, height: 120)
+        panel.minSize = NSSize(width: panelMinWidth, height: minimizedHeight)
         panel.maxSize = NSSize(width: panelMaxWidth, height: 2000)
         panel.contentView = hostingView
 
@@ -51,9 +53,14 @@ final class PanelController {
 
         observeState()
         observeResize(panel)
+        observeSpaceChange(panel)
     }
 
     func hide() {
+        if let observer = spaceChangeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+            spaceChangeObserver = nil
+        }
         panel?.orderOut(nil)
         panel = nil
         cancellables.removeAll()
@@ -68,15 +75,35 @@ final class PanelController {
             .store(in: &cancellables)
     }
 
+    private func observeSpaceChange(_ panel: NSPanel) {
+        spaceChangeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, let panel = self.panel else { return }
+                let frame = panel.frame
+                panel.setFrame(frame.offsetBy(dx: 0, dy: 1), display: false)
+                panel.setFrame(frame, display: true)
+            }
+        }
+    }
+
     private func observeResize(_ panel: NSPanel) {
         NotificationCenter.default.addObserver(
             forName: NSWindow.didResizeNotification,
             object: panel, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                guard let self, !self.isAnimating, !self.state.panelMinimized,
-                      let panel = self.panel else { return }
-                self.expandedHeight = panel.frame.height
+                guard let self, !self.isAnimating, let panel = self.panel else { return }
+                let height = panel.frame.height
+                if !self.state.panelMinimized && height < self.snapThreshold {
+                    self.state.panelMinimized = true
+                } else if self.state.panelMinimized && height > self.snapThreshold {
+                    self.state.panelMinimized = false
+                } else if !self.state.panelMinimized {
+                    self.expandedHeight = height
+                }
             }
         }
     }
