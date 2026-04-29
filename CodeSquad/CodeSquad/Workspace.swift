@@ -96,17 +96,6 @@ struct Workspace: Identifiable {
 
     func matchesCWD(_ cwd: String) -> Bool {
         let normalizedCWD = cwd.hasSuffix("/") ? String(cwd.dropLast()) : cwd
-        let components = normalizedCWD.split(separator: "/").map(String.init)
-
-        if components.contains(name) {
-            return true
-        }
-
-        let lowName = name.lowercased()
-        let lowCWD = normalizedCWD.lowercased()
-        if lowCWD.contains(lowName) {
-            return true
-        }
 
         for folder in folderPaths {
             let normalizedFolder = folder.hasSuffix("/") ? String(folder.dropLast()) : folder
@@ -115,6 +104,9 @@ struct Workspace: Identifiable {
             }
         }
 
-        return false
+        let components = normalizedCWD.split(separator: "/").map { $0.lowercased() }
+        let lowName = name.lowercased()
+        guard lowName.count >= 3 else { return false }
+        return components.contains(lowName)
     }
 }

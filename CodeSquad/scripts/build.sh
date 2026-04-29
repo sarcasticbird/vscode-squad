@@ -7,7 +7,7 @@ APP_BUNDLE="$PROJECT_DIR/.build/CodeSquad.app"
 BINARY="$PROJECT_DIR/.build/debug/CodeSquad"
 ENTITLEMENTS="$PROJECT_DIR/CodeSquad/CodeSquad.entitlements"
 CERT_NAME="CodeSquad Dev"
-BUNDLE_ID="com.cdolan.codesquad"
+BUNDLE_ID="com.codesquad.app"
 
 cd "$PROJECT_DIR"
 

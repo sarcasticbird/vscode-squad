@@ -2,22 +2,33 @@ import Foundation
 import OSLog
 
 enum ExtensionInstaller {
-    private static let logger = Logger(subsystem: "com.cdolan.codesquad", category: "ExtensionInstaller")
+    private static let logger = Logger(subsystem: "com.codesquad.app", category: "ExtensionInstaller")
 
     static let extensionPrefix = "codesquad-shim-"
 
-    static var sourcePath: String {
+    static var sourcePath: String? {
         if let resourceURL = Bundle.main.resourceURL {
             let bundled = resourceURL.appendingPathComponent("CodeSquadExtension").path
             if FileManager.default.fileExists(atPath: bundled) {
                 return bundled
             }
         }
-        return NSHomeDirectory() + "/Projects/vscode-squad/CodeSquadExtension"
+
+        let devPath = Bundle.main.bundleURL
+            .deletingLastPathComponent()       // .build/
+            .deletingLastPathComponent()       // CodeSquad/
+            .appendingPathComponent("CodeSquadExtension").path
+        if FileManager.default.fileExists(atPath: devPath) {
+            return devPath
+        }
+
+        logger.warning("Extension source not found in bundle or adjacent directory")
+        return nil
     }
 
     static var currentVersion: String? {
-        let packagePath = sourcePath + "/package.json"
+        guard let source = sourcePath else { return nil }
+        let packagePath = source + "/package.json"
         guard let data = FileManager.default.contents(atPath: packagePath),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let version = json["version"] as? String else {
@@ -50,10 +61,8 @@ enum ExtensionInstaller {
 
     static func install() throws {
         let fm = FileManager.default
-        let source = sourcePath
-
-        guard fm.fileExists(atPath: source) else {
-            logger.error("Extension source not found at \(source, privacy: .public)")
+        guard let source = sourcePath else {
+            logger.warning("Skipping extension install — source not found")
             return
         }
 

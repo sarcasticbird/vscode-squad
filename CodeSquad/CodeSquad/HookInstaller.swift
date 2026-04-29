@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 
 enum HookInstaller {
-    private static let logger = Logger(subsystem: "com.cdolan.codesquad", category: "HookInstaller")
+    private static let logger = Logger(subsystem: "com.codesquad.app", category: "HookInstaller")
 
     static let baseURL = "http://127.0.0.1:9876"
 

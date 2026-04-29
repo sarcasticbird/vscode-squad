@@ -23,7 +23,7 @@ private struct SessionMeta {
 @MainActor
 final class ClaudeProcessScanner {
     private let state: CodeSquadState
-    private let logger = Logger(subsystem: "com.cdolan.codesquad", category: "ClaudeScanner")
+    private let logger = Logger(subsystem: "com.codesquad.app", category: "ClaudeScanner")
     private var timer: Timer?
 
     init(state: CodeSquadState) {
@@ -46,7 +46,7 @@ final class ClaudeProcessScanner {
 
     private func scan() {
         let sessions = Self.findAllClaudeSessions()
-        logger.info("Scan found \(sessions.count) Claude session(s)")
+        logger.debug("Scan found \(sessions.count) Claude session(s)")
         updateState(with: sessions)
     }
 
