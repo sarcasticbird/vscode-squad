@@ -122,6 +122,13 @@ struct PanelContentView: View {
                         Text("Cmd+Shift+P → Reload Window")
                             .font(.system(size: 9))
                             .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                    case .installFailed:
+                        Text("Extension install failed")
+                            .font(.system(size: 11))
+                            .foregroundStyle(panel.tertiaryText)
+                        Text("Check logs — try restarting CodeSquad")
+                            .font(.system(size: 9))
+                            .foregroundStyle(panel.tertiaryText.opacity(0.7))
                     case .alreadyInstalled:
                         Text("Waiting for VS Code…")
                             .font(.system(size: 11))

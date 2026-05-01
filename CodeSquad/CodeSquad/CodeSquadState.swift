@@ -41,6 +41,7 @@ enum ThemeMode: String, Codable, CaseIterable {
 enum ExtensionState {
     case alreadyInstalled
     case justInstalled
+    case installFailed
     case vsCodeNotFound
 }
 

@@ -38,14 +38,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             state.extensionState = .alreadyInstalled
             logger.info("VS Code extension already installed")
         } else {
-            do {
-                let didInstall = try ExtensionInstaller.install()
-                state.extensionState = didInstall ? .justInstalled : .alreadyInstalled
-                logger.info("VS Code extension \(didInstall ? "installed" : "already up to date")")
-            } catch {
-                logger.error("Failed to install extension: \(error)")
-                state.extensionState = .alreadyInstalled
-            }
+            let didInstall = ExtensionInstaller.install()
+            state.extensionState = didInstall ? .justInstalled : .installFailed
+            logger.info("VS Code extension \(didInstall ? "installed" : "install failed")")
         }
 
         hookServer = HookServer(state: state)

@@ -19,10 +19,19 @@ jobs:
         working-directory: CodeSquad
         run: BUILD_CONFIG=release ./scripts/build.sh
 
-      - name: Embed VS Code extension in bundle
+      - name: Build and embed VS Code extension
         run: |
-          cp -R CodeSquadExtension CodeSquad/.build/CodeSquad.app/Contents/Resources/CodeSquadExtension
-          codesign --force --sign - --identifier com.codesquad.app CodeSquad/.build/CodeSquad.app
+          cd CodeSquadExtension
+          npm ci --ignore-scripts
+          npm run build
+          cd ..
+          mkdir -p CodeSquad/.build/CodeSquad.app/Contents/Resources/CodeSquadExtension
+          cp CodeSquadExtension/package.json CodeSquad/.build/CodeSquad.app/Contents/Resources/CodeSquadExtension/
+          cp -R CodeSquadExtension/out CodeSquad/.build/CodeSquad.app/Contents/Resources/CodeSquadExtension/out
+          codesign --force --sign - \
+            --identifier com.codesquad.app \
+            --entitlements CodeSquad/CodeSquad/CodeSquad.entitlements \
+            CodeSquad/.build/CodeSquad.app
 
       - name: Create zip
         run: |
@@ -30,7 +39,7 @@ jobs:
           zip -r "../../CodeSquad-${GITHUB_REF_NAME}-arm64.zip" CodeSquad.app
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
         with:
           files: "CodeSquad-${{ github.ref_name }}-arm64.zip"
           generate_release_notes: true

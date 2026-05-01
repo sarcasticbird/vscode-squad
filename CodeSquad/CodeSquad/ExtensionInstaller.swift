@@ -61,7 +61,7 @@ enum ExtensionInstaller {
     }
 
     @discardableResult
-    static func install() throws -> Bool {
+    static func install() -> Bool {
         let fm = FileManager.default
         guard let source = sourcePath else {
             logger.warning("Skipping extension install — source not found")
@@ -78,9 +78,13 @@ enum ExtensionInstaller {
             let target = dir + "/" + extensionName
             if fm.fileExists(atPath: target) { continue }
 
-            try fm.createSymbolicLink(atPath: target, withDestinationPath: source)
-            logger.info("Extension symlinked: \(target, privacy: .public) → \(source, privacy: .public)")
-            installed = true
+            do {
+                try fm.createSymbolicLink(atPath: target, withDestinationPath: source)
+                logger.info("Extension symlinked: \(target, privacy: .public) → \(source, privacy: .public)")
+                installed = true
+            } catch {
+                logger.warning("Failed to symlink extension in \(dir, privacy: .public): \(error)")
+            }
         }
 
         return installed
