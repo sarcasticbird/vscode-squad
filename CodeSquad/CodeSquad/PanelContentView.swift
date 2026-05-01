@@ -107,12 +107,29 @@ struct PanelContentView: View {
 
             if state.workspaces.isEmpty {
                 VStack(spacing: 6) {
-                    Text("Waiting for VS Code…")
-                        .font(.system(size: 11))
-                        .foregroundStyle(panel.tertiaryText)
-                    Text("If VS Code is already open, reload the window")
-                        .font(.system(size: 9))
-                        .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                    switch state.extensionState {
+                    case .vsCodeNotFound:
+                        Text("VS Code not detected")
+                            .font(.system(size: 11))
+                            .foregroundStyle(panel.tertiaryText)
+                        Text("Install VS Code to get started")
+                            .font(.system(size: 9))
+                            .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                    case .justInstalled:
+                        Text("Extension installed — reload VS Code")
+                            .font(.system(size: 11))
+                            .foregroundStyle(panel.tertiaryText)
+                        Text("Cmd+Shift+P → Reload Window")
+                            .font(.system(size: 9))
+                            .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                    case .alreadyInstalled:
+                        Text("Waiting for VS Code…")
+                            .font(.system(size: 11))
+                            .foregroundStyle(panel.tertiaryText)
+                        Text("If VS Code is already open, reload the window")
+                            .font(.system(size: 9))
+                            .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
