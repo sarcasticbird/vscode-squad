@@ -133,21 +133,15 @@ struct PanelContentView: View {
                         Text("No VS Code windows found")
                             .font(.system(size: 11))
                             .foregroundStyle(panel.tertiaryText)
-                        if NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode") != nil {
-                            Text("Open VS Code")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundStyle(.blue)
-                                .onTapGesture {
-                                    if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode") {
-                                        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
-                                    }
-                                }
-                                .help("Launch VS Code")
-                        } else {
-                            Text("Open VS Code to get started")
-                                .font(.system(size: 9))
-                                .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                        Button("Open VS Code") {
+                            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode") {
+                                NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.blue)
+                        .help("Launch VS Code")
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

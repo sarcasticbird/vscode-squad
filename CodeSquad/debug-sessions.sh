@@ -34,7 +34,7 @@ tell application "System Events"
                 log "  Window: " & (name of w)
             end repeat
         on error
-            log "  (no windows or no AX access)"
+            log "  (no windows found)"
         end try
     end repeat
 end tell

@@ -57,6 +57,6 @@ rm -f /tmp/codesquad-cert.cfg /tmp/codesquad-key.pem /tmp/codesquad-cert.pem /tm
 
 echo ""
 echo "Certificate '$CERT_NAME' created and trusted for code signing."
-echo "AX permissions will now persist across rebuilds."
+echo "Codesigning identity will now persist across rebuilds."
 echo ""
 echo "Run: scripts/build.sh"
