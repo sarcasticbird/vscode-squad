@@ -122,13 +122,32 @@ struct PanelContentView: View {
                         Text("Cmd+Shift+P → Reload Window")
                             .font(.system(size: 9))
                             .foregroundStyle(panel.tertiaryText.opacity(0.7))
-                    case .installFailed, .alreadyInstalled:
+                    case .installFailed:
+                        Text("Extension setup issue")
+                            .font(.system(size: 11))
+                            .foregroundStyle(panel.tertiaryText)
+                        Text("Try restarting CodeSquad")
+                            .font(.system(size: 9))
+                            .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                    case .alreadyInstalled:
                         Text("No VS Code windows found")
                             .font(.system(size: 11))
                             .foregroundStyle(panel.tertiaryText)
-                        Text("If VS Code is open, check the CodeSquad extension")
-                            .font(.system(size: 9))
-                            .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                        if NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode") != nil {
+                            Text("Open VS Code")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(.blue)
+                                .onTapGesture {
+                                    if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode") {
+                                        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+                                    }
+                                }
+                                .help("Launch VS Code")
+                        } else {
+                            Text("Open VS Code to get started")
+                                .font(.system(size: 9))
+                                .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
