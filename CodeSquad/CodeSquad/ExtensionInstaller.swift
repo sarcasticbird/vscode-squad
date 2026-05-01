@@ -60,12 +60,15 @@ enum ExtensionInstaller {
         }
     }
 
-    static func install() throws {
+    @discardableResult
+    static func install() throws -> Bool {
         let fm = FileManager.default
         guard let source = sourcePath else {
             logger.warning("Skipping extension install — source not found")
-            return
+            return false
         }
+
+        var installed = false
 
         for dir in extensionDirs {
             guard fm.fileExists(atPath: dir) else { continue }
@@ -77,7 +80,15 @@ enum ExtensionInstaller {
 
             try fm.createSymbolicLink(atPath: target, withDestinationPath: source)
             logger.info("Extension symlinked: \(target, privacy: .public) → \(source, privacy: .public)")
+            installed = true
         }
+
+        return installed
+    }
+
+    static func vsCodeDetected() -> Bool {
+        let fm = FileManager.default
+        return extensionDirs.contains { fm.fileExists(atPath: $0) }
     }
 
     private static func removeStaleVersions(in dir: String) {
