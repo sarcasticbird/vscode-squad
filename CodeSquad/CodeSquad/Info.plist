@@ -24,7 +24,5 @@
     <string>14.0</string>
     <key>LSUIElement</key>
     <true/>
-    <key>NSAccessibilityUsageDescription</key>
-    <string>CodeSquad needs Accessibility access to display its floating panel and bring VS Code windows to focus when Claude Code needs your attention.</string>
 </dict>
 </plist>

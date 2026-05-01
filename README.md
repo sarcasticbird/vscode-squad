@@ -24,9 +24,7 @@ CodeSquad is a macOS utility that monitors your Claude Code sessions across VS C
    xattr -cr /Applications/CodeSquad.app
    ```
 4. Launch CodeSquad
-5. Grant Accessibility permission when prompted:
-   System Settings → Privacy & Security → Accessibility → enable CodeSquad
-6. **Reload your VS Code window** so the extension activates:
+5. **Reload your VS Code window** so the extension activates:
    Cmd+Shift+P → "Reload Window"
 
 ### Build from source
@@ -55,17 +53,6 @@ The install script will:
 - Register with Launch Services
 - Launch the app
 
-### Persistent Accessibility Permissions
-
-By default, ad-hoc signing means macOS resets Accessibility permissions on each rebuild. To avoid this during development:
-
-```bash
-./scripts/create-cert.sh
-./scripts/build.sh
-```
-
-This creates a self-signed `CodeSquad Dev` certificate in your login keychain. Subsequent builds will use it automatically.
-
 ## Usage
 
 Once launched, CodeSquad will:
@@ -84,12 +71,6 @@ Once launched, CodeSquad will:
 
 Click a workspace card to bring that VS Code window to focus and dismiss the attention state.
 
-### Accessibility Permission
-
-CodeSquad requires Accessibility access to display the floating panel and bring VS Code windows to focus. Grant it when prompted:
-
-System Settings → Privacy & Security → Accessibility → enable CodeSquad
-
 ### Hook Server
 
 CodeSquad runs a local HTTP server on `127.0.0.1:9876` to receive Claude Code lifecycle events. Hooks are installed automatically into `~/.claude/settings.json` with a backup of your existing config.
@@ -105,7 +86,7 @@ open .build/CodeSquad.app
 **Scripts:**
 - `scripts/build.sh` — compiles the Swift binary, assembles the `.app` bundle, generates the app icon, and codesigns
 - `scripts/install.sh` — runs `build.sh`, then installs to `/Applications` and launches
-- `scripts/create-cert.sh` — creates a self-signed dev certificate for persistent AX permissions
+- `scripts/create-cert.sh` — creates a self-signed dev certificate for persistent codesigning identity
 
 **Release builds:**
 ```bash
@@ -140,12 +121,6 @@ xattr -cr /Applications/CodeSquad.app
 ```
 
 Or: right-click the app in Finder → Open → click "Open" in the dialog.
-
-### Accessibility permission not working
-
-1. System Settings → Privacy & Security → Accessibility
-2. Remove CodeSquad from the list
-3. Re-add it or relaunch and re-grant
 
 ## How It Works
 

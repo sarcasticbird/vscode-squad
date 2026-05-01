@@ -49,5 +49,5 @@ open "$INSTALLED_APP"
 
 echo ""
 echo -e "${GREEN}${APP_NAME} installed successfully!${NC}"
-echo -e "${YELLOW}Grant Accessibility permission when prompted.${NC}"
-echo "  System Settings → Privacy & Security → Accessibility → enable ${APP_NAME}"
+echo -e "${YELLOW}Reload your VS Code window so the extension activates:${NC}"
+echo "  Cmd+Shift+P → Reload Window"
