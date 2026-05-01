@@ -43,3 +43,19 @@ jobs:
         with:
           files: "CodeSquad-${{ github.ref_name }}-arm64.zip"
           generate_release_notes: true
+          append_body: true
+          body: |
+            ## Installation
+
+            1. Download `CodeSquad-${{ github.ref_name }}-arm64.zip` below
+            2. Unzip and drag `CodeSquad.app` to `/Applications`
+            3. **Clear the quarantine flag** (required — the app is not notarized):
+               ```bash
+               xattr -cr /Applications/CodeSquad.app
+               ```
+               Without this, macOS will block the app with _"CodeSquad Not Opened"_.
+            4. Launch CodeSquad
+            5. **Reload your VS Code window** so the extension activates:
+               `Cmd+Shift+P` → `Reload Window`
+
+            ---
