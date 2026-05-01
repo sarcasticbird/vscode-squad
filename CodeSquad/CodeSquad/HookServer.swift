@@ -260,6 +260,9 @@ final class HookServer {
         let authority = reg.remoteAuthority
         logger.debug("Extension registered: \(reg.workspaceName, privacy: .public) folders=\(reg.folderPaths.joined(separator: ", "), privacy: .public) authority=\(authority ?? "local", privacy: .public)")
         windowToWorkspace[reg.windowId] = reg.workspaceName
+        if state.extensionState == .justInstalled {
+            state.extensionState = .alreadyInstalled
+        }
         state.registerWorkspace(name: reg.workspaceName, folderPaths: reg.folderPaths, workspaceFile: reg.workspaceFile, remoteAuthority: authority)
 
         if authority != nil {
