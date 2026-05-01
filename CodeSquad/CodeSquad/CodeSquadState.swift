@@ -38,6 +38,13 @@ enum ThemeMode: String, Codable, CaseIterable {
     }
 }
 
+enum ExtensionState {
+    case alreadyInstalled
+    case justInstalled
+    case installFailed
+    case vsCodeNotFound
+}
+
 @MainActor
 final class CodeSquadState: ObservableObject {
     static let shared = CodeSquadState()
@@ -47,6 +54,7 @@ final class CodeSquadState: ObservableObject {
     @Published var claudeSessions: [String: [ClaudeSession]] = [:]
     @Published var panelMinimized: Bool = false
     @Published var themeMode: ThemeMode = .system
+    @Published var extensionState: ExtensionState = .alreadyInstalled
 
     var remoteWorkspaces: Set<String> = []
 

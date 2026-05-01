@@ -107,12 +107,42 @@ struct PanelContentView: View {
 
             if state.workspaces.isEmpty {
                 VStack(spacing: 6) {
-                    Text("Waiting for VS Code…")
-                        .font(.system(size: 11))
-                        .foregroundStyle(panel.tertiaryText)
-                    Text("If VS Code is already open, reload the window")
-                        .font(.system(size: 9))
-                        .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                    switch state.extensionState {
+                    case .vsCodeNotFound:
+                        Text("VS Code not detected")
+                            .font(.system(size: 11))
+                            .foregroundStyle(panel.tertiaryText)
+                        Text("Install VS Code to get started")
+                            .font(.system(size: 9))
+                            .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                    case .justInstalled:
+                        Text("Extension installed — reload VS Code")
+                            .font(.system(size: 11))
+                            .foregroundStyle(panel.tertiaryText)
+                        Text("Cmd+Shift+P → Reload Window")
+                            .font(.system(size: 9))
+                            .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                    case .installFailed:
+                        Text("Extension setup issue")
+                            .font(.system(size: 11))
+                            .foregroundStyle(panel.tertiaryText)
+                        Text("Try restarting CodeSquad")
+                            .font(.system(size: 9))
+                            .foregroundStyle(panel.tertiaryText.opacity(0.7))
+                    case .alreadyInstalled:
+                        Text("No VS Code windows found")
+                            .font(.system(size: 11))
+                            .foregroundStyle(panel.tertiaryText)
+                        Button("Open VS Code") {
+                            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.VSCode") {
+                                NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.blue)
+                        .help("Launch VS Code")
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
