@@ -63,13 +63,8 @@ if security find-identity -v -p codesigning | grep -q "$CERT_NAME"; then
         --entitlements "$ENTITLEMENTS" \
         --options runtime \
         "$APP_BUNDLE"
-    echo "==> Signed. AX permissions will persist across rebuilds."
 else
-    echo "==> No '$CERT_NAME' certificate found. Using ad-hoc signing."
-    echo "    AX permissions will reset on each rebuild."
-    echo ""
-    echo "    To fix this, run:  $(dirname "$0")/create-cert.sh"
-    echo ""
+    echo "==> Ad-hoc signing (run scripts/create-cert.sh for persistent identity)"
     codesign --force --sign - \
         --identifier "$BUNDLE_ID" \
         --entitlements "$ENTITLEMENTS" \
