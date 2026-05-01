@@ -31,14 +31,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        if ExtensionInstaller.checkInstalled() {
+        if !ExtensionInstaller.vsCodeDetected() {
+            state.extensionState = .vsCodeNotFound
+            logger.info("VS Code not detected")
+        } else if ExtensionInstaller.checkInstalled() {
+            state.extensionState = .alreadyInstalled
             logger.info("VS Code extension already installed")
         } else {
             do {
-                try ExtensionInstaller.install()
-                logger.info("VS Code extension installed")
+                let didInstall = try ExtensionInstaller.install()
+                state.extensionState = didInstall ? .justInstalled : .alreadyInstalled
+                logger.info("VS Code extension \(didInstall ? "installed" : "already up to date")")
             } catch {
                 logger.error("Failed to install extension: \(error)")
+                state.extensionState = .alreadyInstalled
             }
         }
 
