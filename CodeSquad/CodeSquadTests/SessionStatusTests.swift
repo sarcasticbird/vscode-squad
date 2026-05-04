@@ -128,4 +128,51 @@ struct SessionIsolationTests {
         #expect(state.sessionStatus["s1"] == nil)
         #expect(state.claudeSessions["test"] == nil)
     }
+
+    @Test("Hook fires before scanner: status migrates from PID to UUID ID")
+    @MainActor func hookBeforeScanner() {
+        let state = CodeSquadState()
+        state.registerWorkspace(name: "test", folderPaths: ["/tmp/test"])
+
+        // Scanner first discovers session with PID-based ID (no metadata yet)
+        let pidSession = ClaudeSession(id: "999", pid: 999, cwd: "/tmp/test", source: "Terminal", sessionId: nil, chatTitle: nil, metaStatus: nil)
+        state.claudeProcessFound(workspace: "test", sessions: [pidSession])
+        #expect(state.sessionStatus["999"] == .idle)
+
+        // Hook fires with UUID, no scanner match yet — writes to UUID key
+        state.claudePermissionNeeded(sessionId: "abc-uuid")
+        #expect(state.sessionStatus["abc-uuid"] == .permissionNeeded)
+
+        // Scanner next cycle: metadata loaded, session ID transitions from PID to UUID
+        let uuidSession = ClaudeSession(id: "abc-uuid", pid: 999, cwd: "/tmp/test", source: "Terminal", sessionId: "abc-uuid", chatTitle: "my task", metaStatus: nil)
+        state.claudeProcessFound(workspace: "test", sessions: [uuidSession])
+
+        // PID-based entry cleaned up, UUID entry preserves permission status
+        #expect(state.sessionStatus["999"] == nil)
+        #expect(state.sessionStatus["abc-uuid"] == .permissionNeeded)
+    }
+
+    @Test("remoteClaudeDetected creates synthetic session with idle status")
+    @MainActor func remoteDetected() {
+        let state = CodeSquadState()
+        state.registerWorkspace(name: "remote-ws", folderPaths: ["/tmp/remote"])
+
+        state.remoteClaudeDetected(workspace: "remote-ws")
+
+        #expect(state.workspaceStatus(for: "remote-ws") == .idle)
+        #expect(state.claudeSessions["remote-ws"]?.count == 1)
+        #expect(state.claudeSessions["remote-ws"]?.first?.id == "remote-remote-ws")
+    }
+
+    @Test("remoteClaudeGone cleans up synthetic session")
+    @MainActor func remoteGone() {
+        let state = CodeSquadState()
+        state.registerWorkspace(name: "remote-ws", folderPaths: ["/tmp/remote"])
+        state.remoteClaudeDetected(workspace: "remote-ws")
+
+        state.remoteClaudeGone(workspace: "remote-ws")
+
+        #expect(state.workspaceStatus(for: "remote-ws") == .inactive)
+        #expect(state.claudeSessions["remote-ws"] == nil)
+    }
 }

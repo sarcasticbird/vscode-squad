@@ -180,7 +180,18 @@ final class CodeSquadState: ObservableObject {
     }
 
     func remoteClaudeDetected(workspace: String) {
-        // No individual sessions available — nothing to set in sessionStatus
+        let syntheticId = "remote-\(workspace)"
+        if claudeSessions[workspace]?.contains(where: { $0.id == syntheticId }) != true {
+            let session = ClaudeSession(
+                id: syntheticId, pid: 0, cwd: "", source: "Remote",
+                sessionId: nil, chatTitle: nil, metaStatus: nil
+            )
+            claudeSessions[workspace, default: []].append(session)
+        }
+        let current = sessionStatus[syntheticId]
+        if current == nil || current == .inactive {
+            sessionStatus[syntheticId] = .idle
+        }
     }
 
     func remoteClaudeGone(workspace: String) {
@@ -191,5 +202,6 @@ final class CodeSquadState: ObservableObject {
                 sessionStatus.removeValue(forKey: session.id)
             }
         }
+        claudeSessions.removeValue(forKey: workspace)
     }
 }

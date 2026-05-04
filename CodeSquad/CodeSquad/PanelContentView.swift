@@ -323,18 +323,20 @@ struct WorkspaceCard: View {
             if !sessions.isEmpty {
                 ForEach(sessions) { session in
                     let status = sessionStatuses[session.id] ?? .inactive
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(dotColor(for: status))
-                            .frame(width: 5, height: 5)
-                        Text(session.chatTitle ?? "Claude Code")
-                            .font(.system(size: 10))
-                            .foregroundStyle(sessionColor(for: status))
-                            .lineLimit(1)
+                    Button(action: { onSessionTap(session.id) }) {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(dotColor(for: status))
+                                .frame(width: 5, height: 5)
+                            Text(session.chatTitle ?? "Claude Code")
+                                .font(.system(size: 10))
+                                .foregroundStyle(sessionColor(for: status))
+                                .lineLimit(1)
+                        }
+                        .padding(.leading, 14)
+                        .contentShape(Rectangle())
                     }
-                    .padding(.leading, 14)
-                    .contentShape(Rectangle())
-                    .onTapGesture { onSessionTap(session.id) }
+                    .buttonStyle(.plain)
                 }
             }
         }
