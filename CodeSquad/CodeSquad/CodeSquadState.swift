@@ -87,7 +87,10 @@ final class CodeSquadState: ObservableObject {
         for old in oldSessions where !newIDs.contains(old.id) {
             guard let oldStatus = sessionStatus[old.id] else { continue }
             if let sid = old.sessionId, let newId = newBySessionId[sid] {
-                sessionStatus[newId] = oldStatus
+                let existing = sessionStatus[newId]
+                if existing == nil || existing == .inactive {
+                    sessionStatus[newId] = oldStatus
+                }
                 sessionStatus.removeValue(forKey: old.id)
             } else if oldStatus != .needsAttention && oldStatus != .permissionNeeded {
                 sessionStatus.removeValue(forKey: old.id)

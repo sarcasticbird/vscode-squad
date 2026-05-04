@@ -172,6 +172,29 @@ struct SessionIsolationTests {
         #expect(state.sessionStatus["abc-uuid"] == .permissionNeeded)
     }
 
+    @Test("Migration does not clobber hook-set status on UUID key")
+    @MainActor func migrationDoesNotClobber() {
+        let state = CodeSquadState()
+        state.registerWorkspace(name: "test", folderPaths: ["/tmp/test"])
+
+        // Scanner discovers PID session with sessionId
+        let pidSession = ClaudeSession(id: "999", pid: 999, cwd: "/tmp/test", source: "Terminal", sessionId: "abc-uuid", chatTitle: nil, metaStatus: nil)
+        state.claudeProcessFound(workspace: "test", sessions: [pidSession])
+        #expect(state.sessionStatus["999"] == .idle)
+
+        // Hook fires directly to UUID key with high-priority status
+        state.claudePermissionNeeded(sessionId: "abc-uuid")
+        #expect(state.sessionStatus["abc-uuid"] == .permissionNeeded)
+
+        // Scanner next cycle: ID transitions from PID to UUID
+        let uuidSession = ClaudeSession(id: "abc-uuid", pid: 999, cwd: "/tmp/test", source: "Terminal", sessionId: "abc-uuid", chatTitle: "my task", metaStatus: nil)
+        state.claudeProcessFound(workspace: "test", sessions: [uuidSession])
+
+        // Migration must NOT overwrite .permissionNeeded with .idle from PID entry
+        #expect(state.sessionStatus["999"] == nil)
+        #expect(state.sessionStatus["abc-uuid"] == .permissionNeeded)
+    }
+
     @Test("remoteClaudeDetected creates synthetic session with idle status")
     @MainActor func remoteDetected() {
         let state = CodeSquadState()
