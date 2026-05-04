@@ -196,12 +196,15 @@ final class CodeSquadState: ObservableObject {
 
     func remoteClaudeGone(workspace: String) {
         let oldSessions = claudeSessions[workspace] ?? []
-        for session in oldSessions {
+        for session in oldSessions where session.id.hasPrefix("remote-") {
             let current = sessionStatus[session.id]
             if current != .needsAttention && current != .permissionNeeded {
                 sessionStatus.removeValue(forKey: session.id)
             }
         }
-        claudeSessions.removeValue(forKey: workspace)
+        claudeSessions[workspace]?.removeAll { $0.id.hasPrefix("remote-") }
+        if claudeSessions[workspace]?.isEmpty == true {
+            claudeSessions.removeValue(forKey: workspace)
+        }
     }
 }
