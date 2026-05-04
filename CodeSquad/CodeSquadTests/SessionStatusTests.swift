@@ -195,6 +195,28 @@ struct SessionIsolationTests {
         #expect(state.sessionStatus["abc-uuid"] == .permissionNeeded)
     }
 
+    @Test("Migration carries high-priority PID status over idle UUID status")
+    @MainActor func migrationCarriesHighPriority() {
+        let state = CodeSquadState()
+        state.registerWorkspace(name: "test", folderPaths: ["/tmp/test"])
+
+        // Scanner discovers PID session with sessionId
+        let pidSession = ClaudeSession(id: "999", pid: 999, cwd: "/tmp/test", source: "Terminal", sessionId: "abc-uuid", chatTitle: nil, metaStatus: nil)
+        state.claudeProcessFound(workspace: "test", sessions: [pidSession])
+
+        // Hook routes through canonical lookup → writes .permissionNeeded to PID key
+        state.claudePermissionNeeded(sessionId: "999")
+        #expect(state.sessionStatus["999"] == .permissionNeeded)
+
+        // Scanner next cycle: ID transitions from PID to UUID
+        let uuidSession = ClaudeSession(id: "abc-uuid", pid: 999, cwd: "/tmp/test", source: "Terminal", sessionId: "abc-uuid", chatTitle: "my task", metaStatus: nil)
+        state.claudeProcessFound(workspace: "test", sessions: [uuidSession])
+
+        // .permissionNeeded from PID key must migrate to UUID key (not lost to .idle)
+        #expect(state.sessionStatus["999"] == nil)
+        #expect(state.sessionStatus["abc-uuid"] == .permissionNeeded)
+    }
+
     @Test("remoteClaudeDetected creates synthetic session with idle status")
     @MainActor func remoteDetected() {
         let state = CodeSquadState()

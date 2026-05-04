@@ -2,12 +2,26 @@ import Foundation
 import Combine
 import SwiftUI
 
-enum ClaudeStatus: Equatable {
+enum ClaudeStatus: Equatable, Comparable {
     case inactive
     case idle
     case working
-    case permissionNeeded
     case needsAttention
+    case permissionNeeded
+
+    var priority: Int {
+        switch self {
+        case .inactive: return 0
+        case .idle: return 1
+        case .working: return 2
+        case .needsAttention: return 3
+        case .permissionNeeded: return 4
+        }
+    }
+
+    static func < (lhs: ClaudeStatus, rhs: ClaudeStatus) -> Bool {
+        lhs.priority < rhs.priority
+    }
 }
 
 enum ThemeMode: String, Codable, CaseIterable {
@@ -87,8 +101,7 @@ final class CodeSquadState: ObservableObject {
         for old in oldSessions where !newIDs.contains(old.id) {
             guard let oldStatus = sessionStatus[old.id] else { continue }
             if let sid = old.sessionId, let newId = newBySessionId[sid] {
-                let existing = sessionStatus[newId]
-                if existing == nil || existing == .inactive {
+                if oldStatus > (sessionStatus[newId] ?? .inactive) {
                     sessionStatus[newId] = oldStatus
                 }
                 sessionStatus.removeValue(forKey: old.id)
