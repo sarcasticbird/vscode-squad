@@ -54,25 +54,25 @@ struct WorkspaceTitleParsingTests {
 struct WorkspaceCWDMatchingTests {
     @Test("Matches by basename")
     func basenameMatch() {
-        let ws = Workspace(name: "vscode-squad", title: "test — vscode-squad", pid: 0, windowElement: nil)
+        let ws = Workspace(name: "vscode-squad")
         #expect(ws.matchesCWD("/Users/dev/Projects/vscode-squad"))
     }
 
     @Test("Does not match unrelated path")
     func noMatch() {
-        let ws = Workspace(name: "vscode-squad", title: "test — vscode-squad", pid: 0, windowElement: nil)
+        let ws = Workspace(name: "vscode-squad")
         #expect(!ws.matchesCWD("/Users/dev/Projects/other-project"))
     }
 
     @Test("Matches when workspace name appears in path")
     func substringMatch() {
-        let ws = Workspace(name: "feature", title: "test — feature", pid: 0, windowElement: nil)
+        let ws = Workspace(name: "feature")
         #expect(ws.matchesCWD("/Users/dev/Projects/repo-a/feature"))
     }
 
     @Test("Handles trailing slash in cwd")
     func trailingSlash() {
-        let ws = Workspace(name: "vscode-squad", title: "test", pid: 0, windowElement: nil)
+        let ws = Workspace(name: "vscode-squad")
         #expect(ws.matchesCWD("/Users/dev/Projects/vscode-squad/"))
     }
 }

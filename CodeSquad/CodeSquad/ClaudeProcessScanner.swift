@@ -25,6 +25,7 @@ final class ClaudeProcessScanner {
     private let state: CodeSquadState
     private let logger = Logger(subsystem: "com.codesquad.app", category: "ClaudeScanner")
     private var timer: Timer?
+    private var metaCache: [pid_t: (sessionId: String?, chatTitle: String?)] = [:]
 
     init(state: CodeSquadState) {
         self.state = state
@@ -45,7 +46,33 @@ final class ClaudeProcessScanner {
     }
 
     private func scan() {
-        let sessions = Self.findAllClaudeSessions()
+        var sessions = Self.findAllClaudeSessions()
+
+        sessions = sessions.map { session in
+            let cached = metaCache[session.pid]
+            let effectiveSessionId = session.sessionId ?? cached?.sessionId
+            let effectiveTitle = session.chatTitle ?? cached?.chatTitle
+
+            metaCache[session.pid] = (sessionId: effectiveSessionId, chatTitle: effectiveTitle)
+
+            if effectiveSessionId == session.sessionId && effectiveTitle == session.chatTitle {
+                return session
+            }
+
+            return ClaudeSession(
+                id: effectiveSessionId ?? session.id,
+                pid: session.pid,
+                cwd: session.cwd,
+                source: session.source,
+                sessionId: effectiveSessionId,
+                chatTitle: effectiveTitle,
+                metaStatus: session.metaStatus
+            )
+        }
+
+        let activePIDs = Set(sessions.map { $0.pid })
+        metaCache = metaCache.filter { activePIDs.contains($0.key) }
+
         logger.debug("Scan found \(sessions.count) Claude session(s)")
         updateState(with: sessions)
     }
@@ -71,8 +98,13 @@ final class ClaudeProcessScanner {
 
 
     private func applyMetaStatus(workspace: String, sessions: [ClaudeSession]) {
-        if sessions.contains(where: { $0.metaStatus == "busy" }) {
-            state.claudeStatus[workspace] = .working
+        for session in sessions {
+            if session.metaStatus == "busy" {
+                let current = state.sessionStatus[session.id]
+                if current != .needsAttention && current != .permissionNeeded {
+                    state.sessionStatus[session.id] = .working
+                }
+            }
         }
     }
 
@@ -97,7 +129,7 @@ final class ClaudeProcessScanner {
                 : "Terminal"
 
             results.append(ClaudeSession(
-                id: "\(pid)", pid: pid, cwd: cwd, source: source,
+                id: meta?.sessionId ?? "\(pid)", pid: pid, cwd: cwd, source: source,
                 sessionId: meta?.sessionId, chatTitle: meta?.chatTitle,
                 metaStatus: meta?.status
             ))

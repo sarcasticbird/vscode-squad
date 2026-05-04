@@ -237,19 +237,29 @@ final class HookServer {
         }
 
         let name = workspace.name
-        logger.debug("\(path, privacy: .public) → \(name, privacy: .public) (session: \(payload.sessionId, privacy: .public))")
+        let hookSid = payload.sessionId
+
+        // Find canonical ID: scanner may use PID-based ID before metadata is available
+        let sid: String
+        if let existing = state.claudeSessions[name]?.first(where: { $0.id == hookSid || $0.sessionId == hookSid }) {
+            sid = existing.id
+        } else {
+            sid = hookSid
+        }
+
+        logger.debug("\(path, privacy: .public) → \(name, privacy: .public) (session: \(sid, privacy: .public))")
 
         switch path {
         case "/hook/session-start", "/hook/working":
-            state.claudeWorking(workspace: name)
+            state.claudeWorking(sessionId: sid)
         case "/hook/session-end":
-            state.claudeFinished(workspace: name)
+            state.claudeFinished(sessionId: sid)
         case "/hook/permission":
-            state.claudePermissionNeeded(workspace: name)
+            state.claudePermissionNeeded(sessionId: sid)
         case "/hook/attention", "/notify":
-            state.claudeNeedsAttention(workspace: name)
+            state.claudeNeedsAttention(sessionId: sid)
         case "/hook/stopped", "/stop":
-            state.claudeFinished(workspace: name)
+            state.claudeFinished(sessionId: sid)
         default:
             break
         }
@@ -280,19 +290,22 @@ final class HookServer {
                 }
                 state.claudeProcessFound(workspace: reg.workspaceName, sessions: sessions)
 
-                let anyBusy = sessions.contains(where: { $0.metaStatus == "busy" })
-                let anyPermission = sessions.contains(where: { $0.metaStatus == "permission" })
-                let anyComplete = sessions.contains(where: { $0.metaStatus == "complete" })
-                let current = state.claudeStatus[reg.workspaceName]
-
-                if anyBusy {
-                    if current != .needsAttention && current != .permissionNeeded {
-                        state.claudeStatus[reg.workspaceName] = .working
+                for session in sessions {
+                    let current = state.sessionStatus[session.id]
+                    switch session.metaStatus {
+                    case "busy":
+                        if current != .needsAttention && current != .permissionNeeded {
+                            state.sessionStatus[session.id] = .working
+                        }
+                    case "permission":
+                        state.sessionStatus[session.id] = .permissionNeeded
+                    case "complete":
+                        if current == .working || current == .permissionNeeded {
+                            state.sessionStatus[session.id] = .needsAttention
+                        }
+                    default:
+                        break
                     }
-                } else if anyPermission {
-                    state.claudeStatus[reg.workspaceName] = .permissionNeeded
-                } else if current == .working || anyComplete {
-                    state.claudeStatus[reg.workspaceName] = .needsAttention
                 }
             } else if reg.claudeActive == true {
                 state.remoteClaudeDetected(workspace: reg.workspaceName)
@@ -318,7 +331,12 @@ final class HookServer {
 
     @MainActor
     private func handleWorkspaceFocus(_ evt: WorkspaceEvent) {
-        logger.debug("Extension focus: windowId=\(evt.windowId, privacy: .public)")
+        guard let name = windowToWorkspace[evt.windowId] else {
+            logger.debug("Extension focus: unknown windowId=\(evt.windowId, privacy: .public)")
+            return
+        }
+        logger.debug("Extension focus: \(name, privacy: .public) — clearing attention")
+        state.clearAllSessions(for: name)
     }
 
     private nonisolated func sendHTTPResponse(on connection: NWConnection, statusCode: Int, body: String) {

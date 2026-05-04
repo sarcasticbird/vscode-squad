@@ -50,7 +50,7 @@ final class CodeSquadState: ObservableObject {
     static let shared = CodeSquadState()
 
     @Published var workspaces: [Workspace] = []
-    @Published var claudeStatus: [String: ClaudeStatus] = [:]
+    @Published var sessionStatus: [String: ClaudeStatus] = [:]
     @Published var claudeSessions: [String: [ClaudeSession]] = [:]
     @Published var panelMinimized: Bool = false
     @Published var themeMode: ThemeMode = .system
@@ -59,55 +59,97 @@ final class CodeSquadState: ObservableObject {
     var remoteWorkspaces: Set<String> = []
 
     var attentionCount: Int {
-        claudeStatus.values.filter { $0 == .needsAttention || $0 == .permissionNeeded }.count
+        sessionStatus.values.filter { $0 == .needsAttention || $0 == .permissionNeeded }.count
     }
 
     var hasAttention: Bool {
         attentionCount > 0
     }
 
+    func workspaceStatus(for workspace: String) -> ClaudeStatus {
+        let sessions = claudeSessions[workspace] ?? []
+        let statuses = sessions.compactMap { sessionStatus[$0.id] }
+        if statuses.contains(.permissionNeeded) { return .permissionNeeded }
+        if statuses.contains(.needsAttention) { return .needsAttention }
+        if statuses.contains(.working) { return .working }
+        if statuses.contains(.idle) { return .idle }
+        return .inactive
+    }
+
     func claudeProcessFound(workspace: String, sessions: [ClaudeSession]) {
+        let oldSessions = claudeSessions[workspace] ?? []
+        let newIDs = Set(sessions.map { $0.id })
+        let newBySessionId = Dictionary(
+            sessions.compactMap { s in s.sessionId.map { ($0, s.id) } },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        for old in oldSessions where !newIDs.contains(old.id) {
+            guard let oldStatus = sessionStatus[old.id] else { continue }
+            if let sid = old.sessionId, let newId = newBySessionId[sid] {
+                sessionStatus[newId] = oldStatus
+                sessionStatus.removeValue(forKey: old.id)
+            } else if oldStatus != .needsAttention && oldStatus != .permissionNeeded {
+                sessionStatus.removeValue(forKey: old.id)
+            }
+        }
+
         claudeSessions[workspace] = sessions
-        let current = claudeStatus[workspace]
-        if current == nil || current == .inactive {
-            claudeStatus[workspace] = .idle
+        for session in sessions {
+            let current = sessionStatus[session.id]
+            if current == nil || current == .inactive {
+                sessionStatus[session.id] = .idle
+            }
         }
     }
 
     func claudeProcessGone(workspace: String) {
+        let oldSessions = claudeSessions[workspace] ?? []
+        for session in oldSessions {
+            let current = sessionStatus[session.id]
+            if current != .needsAttention && current != .permissionNeeded {
+                sessionStatus.removeValue(forKey: session.id)
+            }
+        }
         claudeSessions.removeValue(forKey: workspace)
-        let current = claudeStatus[workspace]
-        if current != .needsAttention && current != .permissionNeeded {
-            claudeStatus[workspace] = .inactive
-        }
     }
 
-    func claudeWorking(workspace: String) {
-        claudeStatus[workspace] = .working
+    func claudeWorking(sessionId: String) {
+        sessionStatus[sessionId] = .working
     }
 
-    func claudePermissionNeeded(workspace: String) {
-        claudeStatus[workspace] = .permissionNeeded
+    func claudePermissionNeeded(sessionId: String) {
+        sessionStatus[sessionId] = .permissionNeeded
     }
 
-    func claudeNeedsAttention(workspace: String) {
-        let current = claudeStatus[workspace]
+    func claudeNeedsAttention(sessionId: String) {
+        let current = sessionStatus[sessionId]
         if current == .working || current == .permissionNeeded {
-            claudeStatus[workspace] = .needsAttention
+            sessionStatus[sessionId] = .needsAttention
         }
     }
 
-    func claudeFinished(workspace: String) {
-        let current = claudeStatus[workspace]
+    func claudeFinished(sessionId: String) {
+        let current = sessionStatus[sessionId]
         if current == .working || current == .permissionNeeded {
-            claudeStatus[workspace] = .needsAttention
+            sessionStatus[sessionId] = .needsAttention
         }
     }
 
-    func clearStatusAndCollapse(for workspace: String) {
-        let current = claudeStatus[workspace]
+    func clearAllSessions(for workspace: String) {
+        let sessions = claudeSessions[workspace] ?? []
+        for session in sessions {
+            let current = sessionStatus[session.id]
+            if current == .needsAttention || current == .permissionNeeded {
+                sessionStatus[session.id] = .idle
+            }
+        }
+    }
+
+    func clearSession(id: String) {
+        let current = sessionStatus[id]
         if current == .needsAttention || current == .permissionNeeded {
-            claudeStatus[workspace] = .idle
+            sessionStatus[id] = .idle
         }
     }
 
@@ -128,23 +170,26 @@ final class CodeSquadState: ObservableObject {
     }
 
     func deregisterWorkspace(name: String) {
+        let oldSessions = claudeSessions[name] ?? []
+        for session in oldSessions {
+            sessionStatus.removeValue(forKey: session.id)
+        }
         workspaces.removeAll { $0.name == name }
-        claudeStatus.removeValue(forKey: name)
         claudeSessions.removeValue(forKey: name)
         remoteWorkspaces.remove(name)
     }
 
     func remoteClaudeDetected(workspace: String) {
-        let current = claudeStatus[workspace]
-        if current == nil || current == .inactive {
-            claudeStatus[workspace] = .idle
-        }
+        // No individual sessions available — nothing to set in sessionStatus
     }
 
     func remoteClaudeGone(workspace: String) {
-        let current = claudeStatus[workspace]
-        if current == .idle {
-            claudeStatus[workspace] = .inactive
+        let oldSessions = claudeSessions[workspace] ?? []
+        for session in oldSessions {
+            let current = sessionStatus[session.id]
+            if current != .needsAttention && current != .permissionNeeded {
+                sessionStatus.removeValue(forKey: session.id)
+            }
         }
     }
 }

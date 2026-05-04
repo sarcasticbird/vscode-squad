@@ -26,7 +26,7 @@ struct PanelContentView: View {
     private var minimizedBar: some View {
         HStack(spacing: 4) {
             ForEach(state.workspaces) { ws in
-                let status = state.claudeStatus[ws.name] ?? .inactive
+                let status = state.workspaceStatus(for: ws.name)
                 HStack(spacing: 3) {
                     Circle()
                         .fill(dotColor(for: status))
@@ -180,9 +180,14 @@ struct PanelContentView: View {
         ForEach(state.workspaces) { workspace in
             WorkspaceCard(
                 workspace: workspace,
-                claudeStatus: state.claudeStatus[workspace.name] ?? .inactive,
+                workspaceStatus: state.workspaceStatus(for: workspace.name),
                 sessions: state.claudeSessions[workspace.name] ?? [],
-                onTap: { focusWorkspace(workspace) }
+                sessionStatuses: state.sessionStatus,
+                onTap: { focusWorkspace(workspace) },
+                onSessionTap: { sessionId in
+                    state.clearSession(id: sessionId)
+                    focusWorkspace(workspace)
+                }
             )
         }
 
@@ -209,7 +214,7 @@ struct PanelContentView: View {
     private func focusWorkspace(_ workspace: Workspace) {
         let target = workspace.workspaceFile ?? workspace.folderPaths.first
         guard let path = target else {
-            state.clearStatusAndCollapse(for: workspace.name)
+            state.clearAllSessions(for: workspace.name)
             return
         }
 
@@ -228,7 +233,7 @@ struct PanelContentView: View {
                 NSWorkspace.shared.open(url)
             }
         }
-        state.clearStatusAndCollapse(for: workspace.name)
+        state.clearAllSessions(for: workspace.name)
     }
 }
 
@@ -277,9 +282,11 @@ struct PanelColors {
 @MainActor
 struct WorkspaceCard: View {
     let workspace: Workspace
-    let claudeStatus: ClaudeStatus
+    let workspaceStatus: ClaudeStatus
     let sessions: [ClaudeSession]
+    let sessionStatuses: [String: ClaudeStatus]
     let onTap: @MainActor () -> Void
+    let onSessionTap: @MainActor (String) -> Void
 
     @State private var isHovered = false
     @Environment(\.colorScheme) private var colorScheme
@@ -304,16 +311,6 @@ struct WorkspaceCard: View {
                 }
 
                 Spacer()
-
-                if claudeStatus == .permissionNeeded {
-                    Circle()
-                        .fill(Color.purple)
-                        .frame(width: 10, height: 10)
-                } else if claudeStatus == .needsAttention {
-                    Circle()
-                        .fill(Color.orange)
-                        .frame(width: 10, height: 10)
-                }
             }
 
             Text(workspace.folderPaths.first ?? workspace.name)
@@ -325,11 +322,19 @@ struct WorkspaceCard: View {
 
             if !sessions.isEmpty {
                 ForEach(sessions) { session in
-                    Text(session.chatTitle ?? "Claude Code")
-                        .font(.system(size: 10))
-                        .foregroundStyle(sessionColor)
-                        .lineLimit(1)
-                        .padding(.leading, 14)
+                    let status = sessionStatuses[session.id] ?? .inactive
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(dotColor(for: status))
+                            .frame(width: 5, height: 5)
+                        Text(session.chatTitle ?? "Claude Code")
+                            .font(.system(size: 10))
+                            .foregroundStyle(sessionColor(for: status))
+                            .lineLimit(1)
+                    }
+                    .padding(.leading, 14)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onSessionTap(session.id) }
                 }
             }
         }
@@ -345,7 +350,7 @@ struct WorkspaceCard: View {
 
     @ViewBuilder
     private var statusDot: some View {
-        switch claudeStatus {
+        switch workspaceStatus {
         case .working:
             Circle().fill(.green)
         case .permissionNeeded:
@@ -359,8 +364,8 @@ struct WorkspaceCard: View {
         }
     }
 
-    private var sessionColor: Color {
-        switch claudeStatus {
+    private func sessionColor(for status: ClaudeStatus) -> Color {
+        switch status {
         case .working: return .green.opacity(0.6)
         case .permissionNeeded: return .purple.opacity(0.7)
         case .needsAttention: return .orange.opacity(0.7)
@@ -369,10 +374,20 @@ struct WorkspaceCard: View {
         }
     }
 
+    private func dotColor(for status: ClaudeStatus) -> Color {
+        switch status {
+        case .working: return .green
+        case .permissionNeeded: return .purple
+        case .needsAttention: return .orange
+        case .idle: return .cyan.opacity(0.7)
+        case .inactive: return panel.inactiveDot
+        }
+    }
+
     private var cardBackground: Color {
-        if claudeStatus == .permissionNeeded {
+        if workspaceStatus == .permissionNeeded {
             return .purple.opacity(0.15)
-        } else if claudeStatus == .needsAttention {
+        } else if workspaceStatus == .needsAttention {
             return .orange.opacity(0.15)
         } else if isHovered {
             return panel.cardHover
