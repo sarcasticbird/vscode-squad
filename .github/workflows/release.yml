@@ -43,6 +43,7 @@ jobs:
         with:
           files: "CodeSquad-${{ github.ref_name }}-arm64.zip"
           generate_release_notes: true
+          append_body: true
           body: |
             ## Installation
 
