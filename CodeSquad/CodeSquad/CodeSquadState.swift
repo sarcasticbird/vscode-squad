@@ -69,6 +69,7 @@ final class CodeSquadState: ObservableObject {
     @Published var panelMinimized: Bool = false
     @Published var themeMode: ThemeMode = .system
     @Published var extensionState: ExtensionState = .alreadyInstalled
+    @Published var focusedWorkspace: String?
 
     var remoteWorkspaces: Set<String> = []
 
@@ -193,6 +194,9 @@ final class CodeSquadState: ObservableObject {
         workspaces.removeAll { $0.name == name }
         claudeSessions.removeValue(forKey: name)
         remoteWorkspaces.remove(name)
+        if focusedWorkspace == name {
+            focusedWorkspace = nil
+        }
     }
 
     func remoteClaudeDetected(workspace: String) {

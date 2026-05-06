@@ -22,6 +22,7 @@ interface WorkspacePayload {
   claudeActive: boolean;
   remoteAuthority: string | null;
   remoteSessions?: RemoteClaudeSession[];
+  focused?: boolean;
 }
 
 let registered = false;
@@ -262,8 +263,11 @@ function post(
   });
 }
 
-async function register(): Promise<void> {
+async function register(focused?: boolean): Promise<void> {
   const payload = buildPayload();
+  if (focused) {
+    payload.focused = true;
+  }
 
   if (payload.remoteAuthority) {
     try {
@@ -297,7 +301,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
     vscode.window.onDidChangeWindowState((e) => {
       if (e.focused) {
-        register();
+        register(true);
       }
     }),
 

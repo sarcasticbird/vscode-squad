@@ -39,6 +39,7 @@ struct WorkspaceRegistration: Decodable, Sendable {
     let claudeActive: Bool?
     let remoteAuthority: String?
     let remoteSessions: [RemoteSessionPayload]?
+    let focused: Bool?
 }
 
 struct WorkspaceEvent: Decodable, Sendable {
@@ -273,6 +274,9 @@ final class HookServer {
         if state.extensionState == .justInstalled {
             state.extensionState = .alreadyInstalled
         }
+        if reg.focused == true {
+            state.focusedWorkspace = reg.workspaceName
+        }
         state.registerWorkspace(name: reg.workspaceName, folderPaths: reg.folderPaths, workspaceFile: reg.workspaceFile, remoteAuthority: authority)
 
         if authority != nil {
@@ -336,6 +340,7 @@ final class HookServer {
             return
         }
         logger.debug("Extension focus: \(name, privacy: .public) — clearing attention")
+        state.focusedWorkspace = name
         state.clearAllSessions(for: name)
     }
 
