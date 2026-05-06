@@ -54,6 +54,8 @@ final class HookServer {
     private let state: CodeSquadState
     private let logger = Logger(subsystem: "com.codesquad.app", category: "HookServer")
     private var windowToWorkspace: [String: String] = [:]
+    private var focusBatch: [(name: String, clearSessions: Bool)] = []
+    private var focusBatchTask: Task<Void, Never>?
 
     init(port: UInt16 = 9876, state: CodeSquadState) {
         self.port = port
@@ -275,7 +277,7 @@ final class HookServer {
             state.extensionState = .alreadyInstalled
         }
         if reg.focused == true {
-            state.focusedWorkspace = reg.workspaceName
+            batchFocusEvent(reg.workspaceName, clearSessions: false)
         }
         state.registerWorkspace(name: reg.workspaceName, folderPaths: reg.folderPaths, workspaceFile: reg.workspaceFile, remoteAuthority: authority)
 
@@ -340,8 +342,27 @@ final class HookServer {
             return
         }
         logger.debug("Extension focus: \(name, privacy: .public) — clearing attention")
-        state.focusedWorkspace = name
-        state.clearAllSessions(for: name)
+        batchFocusEvent(name, clearSessions: true)
+    }
+
+    @MainActor
+    private func batchFocusEvent(_ workspaceName: String, clearSessions: Bool) {
+        focusBatch.append((name: workspaceName, clearSessions: clearSessions))
+        focusBatchTask?.cancel()
+
+        focusBatchTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(50))
+            guard let self, !Task.isCancelled else { return }
+            if self.focusBatch.count == 1 {
+                let entry = self.focusBatch[0]
+                self.state.focusedWorkspace = entry.name
+                if entry.clearSessions {
+                    self.state.clearAllSessions(for: entry.name)
+                }
+            }
+            self.focusBatch.removeAll()
+            self.focusBatchTask = nil
+        }
     }
 
     private nonisolated func sendHTTPResponse(on connection: NWConnection, statusCode: Int, body: String) {
