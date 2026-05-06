@@ -181,6 +181,7 @@ struct PanelContentView: View {
             WorkspaceCard(
                 workspace: workspace,
                 workspaceStatus: state.workspaceStatus(for: workspace.name),
+                isFocused: state.focusedWorkspace == workspace.name,
                 sessions: state.claudeSessions[workspace.name] ?? [],
                 sessionStatuses: state.sessionStatus,
                 onTap: { focusWorkspace(workspace) },
@@ -274,6 +275,10 @@ struct PanelColors {
         isDark ? .white.opacity(0.04) : .black.opacity(0.03)
     }
 
+    var cardFocused: Color {
+        isDark ? .white.opacity(0.08) : .black.opacity(0.06)
+    }
+
     var inactiveDot: Color {
         isDark ? .white.opacity(0.15) : .black.opacity(0.12)
     }
@@ -283,6 +288,7 @@ struct PanelColors {
 struct WorkspaceCard: View {
     let workspace: Workspace
     let workspaceStatus: ClaudeStatus
+    let isFocused: Bool
     let sessions: [ClaudeSession]
     let sessionStatuses: [String: ClaudeStatus]
     let onTap: @MainActor () -> Void
@@ -345,6 +351,10 @@ struct WorkspaceCard: View {
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(panel.border.opacity(isFocused ? 1 : 0), lineWidth: 1)
+                )
         )
         .onHover { isHovered = $0 }
         .onTapGesture { onTap() }
@@ -393,6 +403,8 @@ struct WorkspaceCard: View {
             return .orange.opacity(0.15)
         } else if isHovered {
             return panel.cardHover
+        } else if isFocused {
+            return panel.cardFocused
         } else {
             return panel.cardDefault
         }
