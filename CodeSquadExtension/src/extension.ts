@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as http from "http";
+import * as crypto from "crypto";
 
 const PORT = 9876;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -21,6 +22,8 @@ interface WorkspacePayload {
   claudeInstalled: boolean;
   claudeActive: boolean;
   remoteAuthority: string | null;
+  commandPort: number | null;
+  commandToken: string | null;
   remoteSessions?: RemoteClaudeSession[];
   focused?: boolean;
 }
@@ -28,6 +31,9 @@ interface WorkspacePayload {
 let registered = false;
 let outputChannel: vscode.OutputChannel;
 let heartbeat: ReturnType<typeof setInterval> | undefined;
+let commandServer: http.Server | undefined;
+let commandPort: number | undefined;
+const commandToken = crypto.randomUUID();
 
 function getWindowId(): string {
   return vscode.env.sessionId;
@@ -35,6 +41,49 @@ function getWindowId(): string {
 
 function log(msg: string): void {
   outputChannel?.appendLine(`[${new Date().toISOString()}] ${msg}`);
+}
+
+function startCommandServer(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      const contentLength = parseInt(req.headers["content-length"] ?? "0", 10);
+      if (contentLength > 1024) {
+        req.destroy();
+        return;
+      }
+      req.resume();
+      if (req.method === "POST" && req.url === "/command/reload") {
+        const auth = req.headers["authorization"];
+        if (auth !== `Bearer ${commandToken}`) {
+          res.writeHead(403, { "Content-Type": "text/plain" });
+          res.end("forbidden");
+          log("Rejected command: invalid token");
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        res.end("ok");
+        log("Received reload window command");
+        setTimeout(() => vscode.commands.executeCommand("workbench.action.reloadWindow"), 100);
+        return;
+      }
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("not found");
+    });
+
+    server.listen(0, "127.0.0.1", () => {
+      const addr = server.address();
+      if (addr && typeof addr !== "string") {
+        commandServer = server;
+        commandPort = addr.port;
+        log(`Command server listening on 127.0.0.1:${addr.port}`);
+        resolve(addr.port);
+      } else {
+        reject(new Error("Failed to bind command server"));
+      }
+    });
+
+    server.on("error", reject);
+  });
 }
 
 function buildPayload(): WorkspacePayload {
@@ -57,6 +106,8 @@ function buildPayload(): WorkspacePayload {
     claudeInstalled: claudeExt !== undefined,
     claudeActive: claudeExt?.isActive ?? false,
     remoteAuthority: (vscode.workspace.workspaceFolders ?? [])[0]?.uri.authority || null,
+    commandPort: commandPort ?? null,
+    commandToken: commandPort ? commandToken : null,
   };
 }
 
@@ -286,9 +337,16 @@ async function register(focused?: boolean): Promise<void> {
   });
 }
 
-export function activate(context: vscode.ExtensionContext): void {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
   outputChannel = vscode.window.createOutputChannel("CodeSquad");
   context.subscriptions.push(outputChannel);
+
+  try {
+    await startCommandServer();
+    context.subscriptions.push({ dispose: () => { commandServer?.close(); commandServer = undefined; commandPort = undefined; } });
+  } catch (err) {
+    log(`Command server failed to start: ${err}`);
+  }
 
   register();
 
@@ -309,7 +367,12 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 }
 
-export function deactivate(): Promise<void> {
+export async function deactivate(): Promise<void> {
   log(`Deregistering: ${getWindowId()}`);
-  return post("/workspace/deregister", { windowId: getWindowId() });
+  if (commandServer) {
+    commandServer.close();
+    commandServer = undefined;
+    commandPort = undefined;
+  }
+  await post("/workspace/deregister", { windowId: getWindowId() });
 }

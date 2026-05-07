@@ -71,6 +71,7 @@ final class CodeSquadState: ObservableObject {
     @Published var extensionState: ExtensionState = .alreadyInstalled
     @Published var focusedWorkspace: String?
 
+    var onReloadAllWindows: (() -> Void)?
     var remoteWorkspaces: Set<String> = []
 
     var attentionCount: Int {

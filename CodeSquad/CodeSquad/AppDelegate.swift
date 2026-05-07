@@ -46,6 +46,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hookServer = HookServer(state: state)
         hookServer?.start()
 
+        state.onReloadAllWindows = { [weak self] in
+            self?.hookServer?.reloadAllWindows()
+        }
+
         claudeScanner = ClaudeProcessScanner(state: state)
         claudeScanner?.start()
 
