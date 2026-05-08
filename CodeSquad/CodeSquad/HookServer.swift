@@ -38,6 +38,8 @@ struct WorkspaceRegistration: Decodable, Sendable {
     let claudeInstalled: Bool
     let claudeActive: Bool?
     let remoteAuthority: String?
+    let commandPort: Int?
+    let commandToken: String?
     let remoteSessions: [RemoteSessionPayload]?
     let focused: Bool?
 }
@@ -54,6 +56,8 @@ final class HookServer {
     private let state: CodeSquadState
     private let logger = Logger(subsystem: "com.codesquad.app", category: "HookServer")
     private var windowToWorkspace: [String: String] = [:]
+    private var windowCommandPorts: [String: Int] = [:]
+    private var windowCommandTokens: [String: String] = [:]
     private var focusBatch: [(name: String, clearSessions: Bool)] = []
     private var focusBatchTask: Task<Void, Never>?
 
@@ -273,6 +277,10 @@ final class HookServer {
         let authority = reg.remoteAuthority
         logger.debug("Extension registered: \(reg.workspaceName, privacy: .public) folders=\(reg.folderPaths.joined(separator: ", "), privacy: .public) authority=\(authority ?? "local", privacy: .public)")
         windowToWorkspace[reg.windowId] = reg.workspaceName
+        if let port = reg.commandPort {
+            windowCommandPorts[reg.windowId] = port
+            windowCommandTokens[reg.windowId] = reg.commandToken
+        }
         if state.extensionState == .justInstalled {
             state.extensionState = .alreadyInstalled
         }
@@ -325,6 +333,8 @@ final class HookServer {
 
     @MainActor
     private func handleWorkspaceDeregister(_ evt: WorkspaceEvent) {
+        windowCommandPorts.removeValue(forKey: evt.windowId)
+        windowCommandTokens.removeValue(forKey: evt.windowId)
         guard let name = windowToWorkspace.removeValue(forKey: evt.windowId) else {
             logger.debug("Extension deregistered unknown windowId=\(evt.windowId, privacy: .public)")
             return
@@ -362,6 +372,32 @@ final class HookServer {
             }
             self.focusBatch.removeAll()
             self.focusBatchTask = nil
+        }
+    }
+
+    @MainActor
+    func reloadAllWindows() {
+        var seen = Set<Int>()
+        let targets = windowCommandPorts.compactMap { (windowId, port) -> (Int, String)? in
+            guard let token = windowCommandTokens[windowId],
+                  seen.insert(port).inserted else { return nil }
+            return (port, token)
+        }
+        logger.info("Sending reload to \(targets.count) window(s)")
+
+        for (port, token) in targets {
+            let url = URL(string: "http://127.0.0.1:\(port)/command/reload")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.timeoutInterval = 2
+            URLSession.shared.dataTask(with: request) { [logger] _, response, error in
+                if let error {
+                    logger.warning("Reload failed on port \(port): \(error.localizedDescription, privacy: .public)")
+                } else if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                    logger.warning("Reload rejected on port \(port): HTTP \(http.statusCode)")
+                }
+            }.resume()
         }
     }
 

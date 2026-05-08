@@ -85,19 +85,15 @@ struct PanelContentView: View {
                 Spacer()
 
                 HStack(spacing: 2) {
-                    Image(systemName: state.themeMode.icon)
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(panel.tertiaryText)
-                        .frame(width: 20, height: 20)
-                        .contentShape(Rectangle())
-                        .onTapGesture { state.themeMode = state.themeMode.next() }
-
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(panel.tertiaryText)
-                        .frame(width: 20, height: 20)
-                        .contentShape(Rectangle())
-                        .onTapGesture { NSApp.terminate(nil) }
+                    ToolbarButton(icon: "arrow.clockwise", tooltip: "Reload windows", panel: panel) {
+                        state.onReloadAllWindows?()
+                    }
+                    ToolbarButton(icon: state.themeMode.icon, tooltip: "Theme: \(state.themeMode.rawValue.capitalized)", panel: panel) {
+                        state.themeMode = state.themeMode.next()
+                    }
+                    ToolbarButton(icon: "xmark", tooltip: "Quit", panel: panel) {
+                        NSApp.terminate(nil)
+                    }
                 }
             }
             .padding(.horizontal, 12)
@@ -408,5 +404,44 @@ struct WorkspaceCard: View {
         } else {
             return panel.cardDefault
         }
+    }
+}
+
+@MainActor
+struct ToolbarButton: View {
+    let icon: String
+    let tooltip: String
+    let panel: PanelColors
+    let action: @MainActor () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Image(systemName: icon)
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(panel.tertiaryText)
+            .frame(width: 20, height: 20)
+            .contentShape(Rectangle())
+            .onTapGesture { action() }
+            .onHover { isHovered = $0 }
+            .overlay(alignment: .bottom) {
+                if isHovered {
+                    Text(tooltip)
+                        .font(.system(size: 9))
+                        .foregroundStyle(panel.primaryText)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(panel.cardHover)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .strokeBorder(panel.border, lineWidth: 1)
+                                )
+                        )
+                        .fixedSize()
+                        .offset(y: 22)
+                }
+            }
     }
 }

@@ -27,3 +27,8 @@ CodeSquad/scripts/icon_source.png
 
 # Internal development docs
 docs/superpowers/
+
+# personal dev tooling
+.kata.toml
+.kata.local.toml
+.roborev.toml
